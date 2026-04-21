@@ -11,9 +11,29 @@ namespace Calculator
         public MainForm()
         {
             InitializeComponent();
+
+            // Инициализация массивов (если не сделано в Designer)
+            if (digitButtons == null)
+            {
+                digitButtons = new Button[] {
+            btnDigit0, btnDigit1, btnDigit2, btnDigit3, btnDigit4, btnDigit5,
+            btnDigit6, btnDigit7, btnDigit8, btnDigit9,
+            btnDigitA, btnDigitB, btnDigitC, btnDigitD, btnDigitE, btnDigitF
+        };
+            }
+            if (opButtons == null)
+            {
+                opButtons = new Button[] { btnAdd, btnSub, btnMul, btnDiv, btnSqr, btnRev };
+            }
+            if (memButtons == null)
+            {
+                memButtons = new Button[] { btnMC, btnMR, btnMS, btnMP };
+            }
+
             controller = new TCtrl(10, 6);
             SubscribeEvents();
             UpdateUI();
+            UpdateDigitButtons();
         }
 
         private void SubscribeEvents()

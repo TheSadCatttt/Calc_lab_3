@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Calculator
 {
-    public class TPNumber
+    public class TPNumber 
     {
         private double n;
         private int b;

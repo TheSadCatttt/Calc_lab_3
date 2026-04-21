@@ -408,6 +408,19 @@
             this.buttonPanel.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
+
+            // В самом конце InitializeComponent(), после добавления всех контролов, но перед закрывающей скобкой:
+            this.digitButtons = new System.Windows.Forms.Button[] {
+                btnDigit0, btnDigit1, btnDigit2, btnDigit3, btnDigit4, btnDigit5,
+                btnDigit6, btnDigit7, btnDigit8, btnDigit9,
+                btnDigitA, btnDigitB, btnDigitC, btnDigitD, btnDigitE, btnDigitF
+            };
+            this.opButtons = new System.Windows.Forms.Button[] {
+                btnAdd, btnSub, btnMul, btnDiv, btnSqr, btnRev
+            };
+            this.memButtons = new System.Windows.Forms.Button[] {
+                btnMC, btnMR, btnMS, btnMP
+            };
         }
     }
 }
