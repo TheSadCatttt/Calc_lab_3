@@ -3,24 +3,25 @@ using System.Text;
 
 namespace Calculator
 {
-    public class TPNumber 
+    public class TPNumber
     {
-        private double n;
-        private int b;
-        private int c;
+        private double n; // Внутреннее представление числа в десятичной форме
+        private int b; // Основание системы счисления (2..16)
+        private int c; // Точность (количество знаков после запятой)
 
-        public TPNumber(double a = 0, int b = 10, int c = 10)
+        public TPNumber(double a = 0, int b = 10, int c = 10) // Конструктор с числом, основанием и точностью
         {
             this.b = CheckBase(b);
             this.c = CheckPrecision(c);
-            this.n = a;
+            this.n = Math.Round(a, c, MidpointRounding.AwayFromZero);
         }
 
-        public TPNumber(string a, int b = 10, int c = 10)
+        public TPNumber(string a, int b = 10, int c = 10) // Конструктор с текстовым представлением числа, основанием и точностью
         {
             this.b = CheckBase(b);
             this.c = CheckPrecision(c);
             this.n = Parse(a, this.b);
+            this.n = Math.Round(this.n, c, MidpointRounding.AwayFromZero);
         }
 
         public double GetNumber() => n;
@@ -50,7 +51,9 @@ namespace Calculator
         public TPNumber Subtract(TPNumber other)
         {
             EnsureCompatible(other);
-            return new TPNumber(n - other.n, b, c);
+            double resultValue = n - other.n;
+            Console.WriteLine($"Subtract: {n} - {other.n} = {resultValue}");
+            return new TPNumber(resultValue, b, c);
         }
 
         public TPNumber Multiply(TPNumber other)
@@ -85,13 +88,38 @@ namespace Calculator
 
             string sign = n < 0 ? "-" : "";
             double abs = Math.Abs(n);
-            long intPart = (long)Math.Floor(abs);
-            double fracPart = abs - intPart;
+
+            // Округляем с учётом точности
+            double rounded = Math.Round(abs, c, MidpointRounding.AwayFromZero);
+
+            // Корректировка из-за погрешностей округления
+            if (Math.Abs(rounded - 1.0) < 1e-12 && abs > 0.5)
+            {
+                rounded = 1.0;
+            }
+
+            long intPart = (long)Math.Floor(rounded);
+            double fracPart = rounded - intPart;
+
+            // Дополнительная проверка на погрешности
+            if (fracPart > 0.9999999999)
+            {
+                intPart++;
+                fracPart = 0;
+            }
 
             string intStr = IntToString(intPart, b);
-            string fracStr = FracToString(fracPart, b, c);
 
-            // Запятая выводится только если есть дробная часть
+            if (intPart == 0 && string.IsNullOrEmpty(intStr))
+                intStr = "0";
+
+            string fracStr = "";
+            if (c > 0 && fracPart > 1e-12)
+            {
+                fracStr = FracToString(fracPart, b, c);
+                fracStr = fracStr.TrimEnd('0');
+            }
+
             if (string.IsNullOrEmpty(fracStr))
                 return sign + intStr;
             return sign + intStr + "," + fracStr;
@@ -211,5 +239,6 @@ namespace Calculator
             if (c != other.c)
                 throw new InvalidOperationException("Точности не совпадают");
         }
+
     }
 }

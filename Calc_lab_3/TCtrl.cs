@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 
 namespace Calculator
 {
@@ -47,6 +47,10 @@ namespace Calculator
         private TCtrlState state;
         private int currentBase;
         private int currentPrecision;
+        
+        // Для хранения последней выполненной функции (для повторения через Enter)
+        private TFunc lastFunction;
+        private bool lastWasFunction;
 
         public TCtrl(int numberBase = 10, int precision = 10)
         {
@@ -57,6 +61,7 @@ namespace Calculator
             processor = new TProc<TPNumber>(zero, zero);
             memory = new TMemory<TPNumber>(zero);
             state = TCtrlState.Start;
+            lastWasFunction = false;
         }
 
         public TCtrlState State => state;
@@ -84,7 +89,14 @@ namespace Calculator
 
         public string ExecuteEditorCommand(int cmd)
         {
-            if (state == TCtrlState.Result || state == TCtrlState.OpSet)
+            // Если мы в состоянии Result и пользователь начал ввод цифры или разделителя - начинаем новый ввод
+            if (state == TCtrlState.Result && (cmd >= 0 && cmd <= 16 || cmd == CMD_SIGN))
+            {
+                editor.Clear();
+                state = TCtrlState.Editing;
+                lastWasFunction = false;
+            }
+            else if (state == TCtrlState.OpSet && (cmd >= 0 && cmd <= 16))
             {
                 editor.Clear();
                 state = TCtrlState.Editing;
@@ -98,6 +110,7 @@ namespace Calculator
             return result;
         }
 
+        // Метод ExecuteOperation нужно заменить на этот:
         public string ExecuteOperation(int cmd)
         {
             TPNumber current = ReadCurrentNumber();
@@ -112,49 +125,156 @@ namespace Calculator
                 default: return Display;
             }
 
+            lastWasFunction = false;
+
+            // Если в состоянии Editing и есть ожидающая операция - сначала вычисляем
+            if (state == TCtrlState.Editing && processor.GetOperation() != TOprtn.None)
+            {
+                // Вычисляем текущую операцию с текущим числом как правым операндом
+                processor.SetRightOperand(current);
+                TPNumber result = processor.RunOperation();
+
+                // Сохраняем результат как левый операнд
+                processor.SetLeftOperand(result);
+                processor.SetOperation(op); // Устанавливаем новую операцию
+                processor.ClearRightOperand(); // Очищаем правый операнд
+
+                // Показываем результат на дисплее
+                WriteToEditor(result);
+                state = TCtrlState.OpSet;
+                return Display;
+            }
+
+            // Если мы в состоянии Result, используем текущее число как левый операнд
+            if (state == TCtrlState.Result)
+            {
+                processor.SetLeftOperand(current);
+                processor.SetOperation(op);
+                state = TCtrlState.OpSet;
+                editor.Clear();
+                return Display;
+            }
+
             if (state == TCtrlState.OpSet)
             {
                 processor.SetRightOperand(current);
                 processor.RunOperation();
+                processor.SetOperation(op);
+                processor.SetLeftOperand(processor.GetLeftOperand());
             }
             else
             {
                 processor.SetLeftOperand(current);
+                processor.SetOperation(op);
             }
 
-            processor.SetOperation(op);
             state = TCtrlState.OpSet;
             editor.Clear();
 
-            TPNumber result = processor.GetLeftOperand();
-            return result.ToString();
+            return processor.GetLeftOperand().ToString();
+        }
+        public string ExecuteEqual()
+        {
+            Console.WriteLine($"ExecuteEqual: state={state}");
+
+            // Если была выполнена функция и теперь нажали Enter - повторяем функцию
+            if (state == TCtrlState.Result && lastWasFunction)
+            {
+                try
+                {
+                    TPNumber current = ReadCurrentNumber();
+                    processor.SetLeftOperand(current);
+                    TPNumber result = processor.RunFunction(lastFunction);
+                    WriteToEditor(result);
+                    processor.SetLeftOperand(result);
+                    return Display;
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Нельзя повторить функцию", ex);
+                }
+            }
+
+            // Если в состоянии Result - повторяем последнюю операцию
+            if (state == TCtrlState.Result)
+            {
+                try
+                {
+                    TPNumber result = processor.RepeatLastOperation();
+                    WriteToEditor(result);
+                    processor.SetLeftOperand(result);
+                    lastWasFunction = false;
+                    return Display;
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException("Нельзя повторить операцию", ex);
+                }
+            }
+
+            // Обычное выполнение операции
+            if (state != TCtrlState.Result)
+            {
+                TPNumber current = ReadCurrentNumber();
+                Console.WriteLine($"ExecuteEqual: current={current.GetNumber()}");
+                processor.SetRightOperand(current);
+            }
+
+            TPNumber operationResult = processor.RunOperation();
+            Console.WriteLine($"ExecuteEqual result={operationResult.GetNumber()}");
+
+            WriteToEditor(operationResult);
+            processor.SetLeftOperand(operationResult);
+            processor.ClearOperation();
+            lastWasFunction = false;
+
+            state = TCtrlState.Result;
+            return Display;
         }
 
         public string ExecuteFunction(int cmd)
         {
-            // Кладём текущее число в левый операнд и применяем функцию к нему
             TPNumber current = ReadCurrentNumber();
-            processor.SetLeftOperand(current);
-
             TFunc func = cmd == CMD_SQR ? TFunc.Sqr : TFunc.Rev;
-            // RunFunction теперь работает с lopRes и возвращает результат
-            TPNumber result = processor.RunFunction(func);
-
-            state = TCtrlState.Result;
-            WriteToEditor(result);
-            return Display;
-        }
-
-        public string ExecuteEqual()
-        {
-            if (state != TCtrlState.Result)
+            
+            TPNumber result;
+            
+            // Если есть ожидающая операция (состояние OpSet)
+            if (state == TCtrlState.OpSet)
             {
-                processor.SetRightOperand(ReadCurrentNumber());
+                // Применяем функцию к текущему числу (правому операнду)
+                processor.SetRightOperand(current);
+                result = processor.RunFunctionOnOperand(func, processor.GetRightOperand());
+                // Сохраняем результат как правый операнд
+                processor.SetRightOperand(result);
+                // Показываем результат на дисплее, но не выполняем операцию
+                WriteToEditor(result);
+                state = TCtrlState.OpSet; // Остаёмся в состоянии ожидания операции
             }
-
-            TPNumber result = processor.RunOperation();
-            state = TCtrlState.Result;
-            WriteToEditor(result);
+            else if (state == TCtrlState.Result)
+            {
+                // Применяем функцию к текущему результату
+                processor.SetLeftOperand(current);
+                result = processor.RunFunction(func);
+                WriteToEditor(result);
+                processor.SetLeftOperand(result);
+                processor.ClearOperation();
+                state = TCtrlState.Result;
+            }
+            else
+            {
+                // Start или Editing - просто применяем функцию к текущему числу
+                processor.SetLeftOperand(current);
+                result = processor.RunFunction(func);
+                WriteToEditor(result);
+                processor.SetLeftOperand(result);
+                processor.ClearOperation();
+                state = TCtrlState.Result;
+            }
+            
+            lastWasFunction = true;
+            lastFunction = func;
+            
             return Display;
         }
 
@@ -169,11 +289,30 @@ namespace Calculator
                     memory.Store(current);
                     break;
                 case CMD_MR:
-                    WriteToEditor(memory.Take());
+                    TPNumber memValue = memory.Take() as TPNumber;
+                    if (memValue != null)
+                    {
+                        TPNumber converted = new TPNumber(memValue.GetNumber(), currentBase, currentPrecision);
+                        WriteToEditor(converted);
+                    }
+                    else
+                    {
+                        WriteToEditor(zero);
+                    }
                     state = TCtrlState.Result;
                     break;
                 case CMD_MP:
-                    memory.Add(current);
+                    TPNumber memVal = memory.Take() as TPNumber;
+                    if (memVal != null)
+                    {
+                        TPNumber memConverted = new TPNumber(memVal.GetNumber(), currentBase, currentPrecision);
+                        TPNumber sum = memConverted.Add(current);
+                        memory.Store(sum);
+                    }
+                    else
+                    {
+                        memory.Add(current);
+                    }
                     break;
                 case CMD_MC:
                     memory.Clear(zero);
@@ -188,6 +327,7 @@ namespace Calculator
             var zero = new TPNumber(0, currentBase, currentPrecision);
             processor.Reset(zero, zero);
             state = TCtrlState.Start;
+            lastWasFunction = false;
             return Display;
         }
 
@@ -202,6 +342,9 @@ namespace Calculator
                 TPNumber parsed = new TPNumber(text.Trim(), currentBase, currentPrecision);
                 WriteToEditor(parsed);
                 state = TCtrlState.Result;
+                processor.SetLeftOperand(parsed);
+                processor.ClearOperation();
+                lastWasFunction = false;
             }
             catch
             {
@@ -224,19 +367,7 @@ namespace Calculator
 
         private void WriteToEditor(TPNumber value)
         {
-            editor.Clear();
-            string text = value.ToString();
-            foreach (char ch in text)
-            {
-                if (ch == '-')
-                    editor.ToggleSign();
-                else if (ch == ',')
-                    editor.AddSeparator();
-                else if (ch >= '0' && ch <= '9')
-                    editor.AddDigit(ch - '0');
-                else if (ch >= 'A' && ch <= 'F')
-                    editor.AddDigit(ch - 'A' + 10);
-            }
+            editor.SetString(value.ToString());
         }
     }
 }

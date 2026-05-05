@@ -147,18 +147,19 @@
 
             // ── txtDisplay ──────────────────────────────────────────────────
             this.txtDisplay.Font = new System.Drawing.Font("Consolas", 18F);
-            this.txtDisplay.Location = new System.Drawing.Point(12, 35);
+            this.txtDisplay.Location = new System.Drawing.Point(12, 57);
             this.txtDisplay.Name = "txtDisplay";
             this.txtDisplay.ReadOnly = true;
             this.txtDisplay.Size = new System.Drawing.Size(390, 35);
             this.txtDisplay.TabIndex = 0;
             this.txtDisplay.Text = "0";
             this.txtDisplay.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.txtDisplay.BackColor = System.Drawing.Color.White;
+            this.txtDisplay.BackColor = System.Drawing.SystemColors.Window; // или Control
+            this.txtDisplay.TabStop = false; // КЛЮЧЕВОЙ МОМЕНТ - отключаем фокус
 
             // ── lblMemory ───────────────────────────────────────────────────
             this.lblMemory.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.lblMemory.Location = new System.Drawing.Point(12, 10);
+            this.lblMemory.Location = new System.Drawing.Point(12, 32);
             this.lblMemory.Name = "lblMemory";
             this.lblMemory.Size = new System.Drawing.Size(40, 25);
             this.lblMemory.Text = "";
@@ -166,14 +167,14 @@
 
             // ── lblBase ─────────────────────────────────────────────────────
             this.lblBase.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblBase.Location = new System.Drawing.Point(295, 10);
+            this.lblBase.Location = new System.Drawing.Point(295, 32);
             this.lblBase.Name = "lblBase";
             this.lblBase.Size = new System.Drawing.Size(45, 25);
             this.lblBase.Text = "Осн:";
             this.lblBase.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 
             // ── numBase ─────────────────────────────────────────────────────
-            this.numBase.Location = new System.Drawing.Point(342, 12);
+            this.numBase.Location = new System.Drawing.Point(342, 34);
             this.numBase.Minimum = 2;
             this.numBase.Maximum = 16;
             this.numBase.Name = "numBase";
@@ -327,7 +328,7 @@
             this.btnEqual.ForeColor = System.Drawing.Color.White;
 
             // ── TableLayoutPanel ─────────────────────────────────────────────
-            this.buttonPanel.Location = new System.Drawing.Point(12, 80);
+            this.buttonPanel.Location = new System.Drawing.Point(12, 102);
             this.buttonPanel.Name = "buttonPanel";
             this.buttonPanel.Size = new System.Drawing.Size(396, 380);
             this.buttonPanel.ColumnCount = 6;
@@ -386,7 +387,7 @@
             // ── MainForm ─────────────────────────────────────────────────────
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(420, 480);
+            this.ClientSize = new System.Drawing.Size(420, 502);
             this.KeyPreview = true;
             this.MainMenuStrip = this.mainMenu;
             this.Name = "MainForm";
@@ -408,19 +409,6 @@
             this.buttonPanel.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
-
-            // В самом конце InitializeComponent(), после добавления всех контролов, но перед закрывающей скобкой:
-            this.digitButtons = new System.Windows.Forms.Button[] {
-                btnDigit0, btnDigit1, btnDigit2, btnDigit3, btnDigit4, btnDigit5,
-                btnDigit6, btnDigit7, btnDigit8, btnDigit9,
-                btnDigitA, btnDigitB, btnDigitC, btnDigitD, btnDigitE, btnDigitF
-            };
-            this.opButtons = new System.Windows.Forms.Button[] {
-                btnAdd, btnSub, btnMul, btnDiv, btnSqr, btnRev
-            };
-            this.memButtons = new System.Windows.Forms.Button[] {
-                btnMC, btnMR, btnMS, btnMP
-            };
         }
     }
 }
