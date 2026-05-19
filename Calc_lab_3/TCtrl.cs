@@ -75,6 +75,7 @@ namespace Calculator
         public CalculatorMode GetMode() => currentMode;
         public string ExpressionInProgress => expressionInProgress;
         public string History => historyBuilder.ToString();
+        public bool IsEditingReal => editor.IsEditingReal;
 
         // Конструктор
         public TCtrl(int numberBase = 10, int precision = 6, CalculatorMode mode = CalculatorMode.Real)

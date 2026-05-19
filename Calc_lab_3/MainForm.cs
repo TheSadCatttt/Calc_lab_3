@@ -297,7 +297,19 @@ namespace Calculator
             txtDisplay.Text = controller.Display;
             lblMemory.Text = controller.MemoryOn ? "M" : "";
 
-            // Обновляем состояние радио-кнопок в соответствии с текущим режимом
+            // Для комплексных чисел показываем подсказку, какая часть редактируется
+            if (controller.GetMode() == CalculatorMode.Complex)
+            {
+                // Можно сделать разный цвет или тултип
+                // Пока просто меняем подпись на кнопке i
+                btnImaginary.Text = controller.IsEditingReal ? "Re" : "Im";
+            }
+            else
+            {
+                btnImaginary.Text = "i";
+            }
+
+            // Обновляем состояние радио-кнопок
             CalculatorMode currentMode = controller.GetMode();
             rbReal.Checked = (currentMode == CalculatorMode.Real);
             rbFraction.Checked = (currentMode == CalculatorMode.Fraction);
