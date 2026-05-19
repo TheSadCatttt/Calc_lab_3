@@ -465,14 +465,25 @@ namespace Calculator
 
         public string ExecuteEditorCommand(int cmd)
         {
-            if (currentMode == CalculatorMode.Complex && cmd == CMD_IMAGINARY)
+            // В режиме Fraction кнопка CMD_FRACTION
+            if (currentMode == CalculatorMode.Fraction && cmd == CMD_FRACTION)
             {
-                editor.Edit(CMD_IMAGINARY);
+                editor.Edit(cmd);
                 if (state == TCtrlState.Start)
                     state = TCtrlState.Editing;
                 return editor.GetString();
             }
 
+            // В режиме Complex кнопка CMD_IMAGINARY
+            if (currentMode == CalculatorMode.Complex && cmd == CMD_IMAGINARY)
+            {
+                editor.Edit(cmd);
+                if (state == TCtrlState.Start)
+                    state = TCtrlState.Editing;
+                return editor.GetString();
+            }
+
+            // Если в состоянии Result и начали ввод - начинаем новое число
             if (state == TCtrlState.Result && (cmd >= 0 && cmd <= 16 || cmd == CMD_SIGN))
             {
                 editor.Clear();

@@ -2,18 +2,13 @@
 
 namespace Calculator
 {
-    /// <summary>
-    /// Класс комплексных чисел с поддержкой p-ичной системы счисления
-    /// </summary>
-    /// 
     public class TComplex : TANumber
     {
-        private TPNumber real;      // Действительная часть
-        private TPNumber imaginary; // Мнимая часть
+        private TPNumber real;
+        private TPNumber imaginary;
         private int numberBase;
         private int precision;
 
-        public TComplex() : this(0, 0, 10, 6) { }
         public TComplex(double re = 0, double im = 0, int baseNum = 10, int prec = 6)
         {
             numberBase = baseNum;
@@ -35,6 +30,8 @@ namespace Calculator
             ParseFromString(str);
         }
 
+        public TComplex() : this(0, 0, 10, 6) { }
+
         private void ParseFromString(string str)
         {
             if (string.IsNullOrWhiteSpace(str))
@@ -42,43 +39,104 @@ namespace Calculator
 
             string s = str.Trim();
 
-            int iPos = s.IndexOf('i');
-            if (iPos == -1)
+            // Убираем лишние плюсы в начале
+            if (s.StartsWith("+"))
+                s = s.Substring(1);
+
+            // Если нет i - это действительное число
+            if (!s.Contains("i"))
             {
                 real = new TPNumber(s, numberBase, precision);
                 imaginary = new TPNumber(0, numberBase, precision);
                 return;
             }
 
-            string imPart = s.Substring(0, iPos);
-            string rePart = "";
-
-            int plusPos = s.LastIndexOf('+', iPos);
-            int minusPos = s.LastIndexOf('-', iPos);
-
-            if (minusPos > 0 && (plusPos < 0 || minusPos > plusPos))
+            // Если строка просто "i"
+            if (s == "i")
             {
-                rePart = s.Substring(0, minusPos);
-                imPart = s.Substring(minusPos, iPos - minusPos);
+                real = new TPNumber(0, numberBase, precision);
+                imaginary = new TPNumber(1, numberBase, precision);
+                return;
             }
-            else if (plusPos >= 0)
+
+            // Если строка "-i"
+            if (s == "-i")
             {
-                rePart = s.Substring(0, plusPos);
-                imPart = s.Substring(plusPos, iPos - plusPos);
+                real = new TPNumber(0, numberBase, precision);
+                imaginary = new TPNumber(-1, numberBase, precision);
+                return;
+            }
+
+            // Разбираем комплексное число
+            double realValue = 0;
+            double imagValue = 0;
+
+            // Ищем позицию i
+            int iPos = s.IndexOf('i');
+            string beforeI = s.Substring(0, iPos);
+
+            // Если перед i ничего нет
+            if (string.IsNullOrEmpty(beforeI))
+            {
+                real = new TPNumber(0, numberBase, precision);
+                imaginary = new TPNumber(1, numberBase, precision);
+                return;
+            }
+
+            // Парсим часть перед i
+            // Нужно найти последний знак + или - который не является частью числа
+            int lastOp = -1;
+            for (int j = beforeI.Length - 1; j >= 0; j--)
+            {
+                if (beforeI[j] == '+' || beforeI[j] == '-')
+                {
+                    if (j == 0 || (beforeI[j - 1] != 'e' && beforeI[j - 1] != 'E'))
+                    {
+                        lastOp = j;
+                        break;
+                    }
+                }
+            }
+
+            if (lastOp == -1)
+            {
+                // Вся строка перед i - это мнимая часть
+                string imagStr = beforeI;
+                if (imagStr == "+" || imagStr == "")
+                    imagValue = 1;
+                else if (imagStr == "-")
+                    imagValue = -1;
+                else
+                    imagValue = double.Parse(imagStr, System.Globalization.CultureInfo.InvariantCulture);
+
+                real = new TPNumber(0, numberBase, precision);
+                imaginary = new TPNumber(imagValue, numberBase, precision);
             }
             else
             {
-                rePart = "";
+                // Есть и действительная, и мнимая часть
+                string realStr = beforeI.Substring(0, lastOp);
+                string imagStr = beforeI.Substring(lastOp + 1);
+
+                if (string.IsNullOrEmpty(realStr))
+                    realValue = 0;
+                else
+                    realValue = double.Parse(realStr, System.Globalization.CultureInfo.InvariantCulture);
+
+                if (string.IsNullOrEmpty(imagStr) || imagStr == "+")
+                    imagValue = 1;
+                else if (imagStr == "-")
+                    imagValue = -1;
+                else
+                    imagValue = double.Parse(imagStr, System.Globalization.CultureInfo.InvariantCulture);
+
+                // Учитываем знак
+                if (beforeI[lastOp] == '-')
+                    imagValue = -imagValue;
+
+                real = new TPNumber(realValue, numberBase, precision);
+                imaginary = new TPNumber(imagValue, numberBase, precision);
             }
-
-            real = string.IsNullOrEmpty(rePart)
-                ? new TPNumber(0, numberBase, precision)
-                : new TPNumber(rePart, numberBase, precision);
-
-            if (string.IsNullOrEmpty(imPart) || imPart == "+" || imPart == "-")
-                imPart += "1";
-
-            imaginary = new TPNumber(imPart, numberBase, precision);
         }
 
         public TPNumber GetReal() => real;
@@ -87,29 +145,22 @@ namespace Calculator
         public override TANumber Add(TANumber other)
         {
             TComplex c = other as TComplex ?? throw new InvalidOperationException("Несовместимые типы");
-
-            TPNumber newReal = real.Add(c.real) as TPNumber;
-            TPNumber newImag = imaginary.Add(c.imaginary) as TPNumber;
-
-            return new TComplex(newReal ?? new TPNumber(0, numberBase, precision),
-                               newImag ?? new TPNumber(0, numberBase, precision));
+            return new TComplex(real.Add(c.real) as TPNumber ?? new TPNumber(0, numberBase, precision),
+                               imaginary.Add(c.imaginary) as TPNumber ?? new TPNumber(0, numberBase, precision));
         }
 
         public override TANumber Subtract(TANumber other)
         {
             TComplex c = other as TComplex ?? throw new InvalidOperationException("Несовместимые типы");
-
-            TPNumber newReal = real.Subtract(c.real) as TPNumber;
-            TPNumber newImag = imaginary.Subtract(c.imaginary) as TPNumber;
-
-            return new TComplex(newReal ?? new TPNumber(0, numberBase, precision),
-                               newImag ?? new TPNumber(0, numberBase, precision));
+            return new TComplex(real.Subtract(c.real) as TPNumber ?? new TPNumber(0, numberBase, precision),
+                               imaginary.Subtract(c.imaginary) as TPNumber ?? new TPNumber(0, numberBase, precision));
         }
 
         public override TANumber Multiply(TANumber other)
         {
             TComplex c = other as TComplex ?? throw new InvalidOperationException("Несовместимые типы");
 
+            // (a+bi)*(c+di) = (ac - bd) + (ad + bc)i
             TPNumber ac = real.Multiply(c.real) as TPNumber ?? new TPNumber(0, numberBase, precision);
             TPNumber bd = imaginary.Multiply(c.imaginary) as TPNumber ?? new TPNumber(0, numberBase, precision);
             TPNumber ad = real.Multiply(c.imaginary) as TPNumber ?? new TPNumber(0, numberBase, precision);
@@ -177,9 +228,8 @@ namespace Calculator
 
         public override TANumber Negate()
         {
-            TPNumber newReal = real.Negate() as TPNumber ?? new TPNumber(0, numberBase, precision);
-            TPNumber newImag = imaginary.Negate() as TPNumber ?? new TPNumber(0, numberBase, precision);
-            return new TComplex(newReal, newImag);
+            return new TComplex(real.Negate() as TPNumber ?? new TPNumber(0, numberBase, precision),
+                               imaginary.Negate() as TPNumber ?? new TPNumber(0, numberBase, precision));
         }
 
         public override bool IsZero() => real.IsZero() && imaginary.IsZero();
@@ -208,10 +258,22 @@ namespace Calculator
                 return real.ToString();
 
             if (real.IsZero())
-                return $"{imaginary}i";
+            {
+                string temp = imaginary.ToString();
+                if (temp == "1") return "i";
+                if (temp == "-1") return "-i";
+                return temp + "i";
+            }
 
-            string sign = imaginary.GetNumber() >= 0 ? "+" : "";
-            return $"{real}{sign}{imaginary}i";
+            string sign = imaginary.GetNumber() >= 0 ? "+" : "-";
+            string coefficient = imaginary.GetNumber() >= 0
+                ? imaginary.ToString()
+                : imaginary.Negate().ToString();
+
+            if (coefficient == "1")
+                return $"{real}{sign}i";
+
+            return $"{real}{sign}{coefficient}i";
         }
     }
 }

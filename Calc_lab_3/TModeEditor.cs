@@ -4,7 +4,6 @@ namespace Calculator
 {
     /// <summary>
     /// Редактор чисел с поддержкой разных режимов (действительные, дроби, комплексные)
-    /// Соответствует AEditor и его наследникам из методички
     /// </summary>
     public class TModeEditor
     {
@@ -19,9 +18,10 @@ namespace Calculator
         private string fractionStr;
         private string complexStr;
 
-        // Для комплексных чисел: отслеживаем, редактируем ли сейчас мнимую часть
-        private bool editingImaginary;
-        private bool hasImaginarySeparator;
+        // Для комплексных чисел: храним отдельно действительную и мнимую части
+        private string complexRealPart;
+        private string complexImagPart;
+        private bool isEditingImaginary;
 
         public TModeEditor(int baseNum = 10, int prec = 6, NumberMode mode = NumberMode.Real)
         {
@@ -35,7 +35,6 @@ namespace Calculator
         {
             if (currentMode == mode) return;
 
-            // Сохраняем текущее значение в соответствующую переменную перед сменой режима
             SaveCurrentValue();
             currentMode = mode;
             LoadValueForCurrentMode();
@@ -47,9 +46,6 @@ namespace Calculator
         {
             if (newBase == numberBase) return;
             numberBase = newBase;
-
-            // При смене основания нужно пересчитать все представления
-            // Проще всего сбросить всё в 0
             Reset();
         }
 
@@ -63,8 +59,9 @@ namespace Calculator
             realStr = "0";
             fractionStr = "0";
             complexStr = "0";
-            editingImaginary = false;
-            hasImaginarySeparator = false;
+            complexRealPart = "0";
+            complexImagPart = "";
+            isEditingImaginary = false;
         }
 
         private void SaveCurrentValue()
@@ -89,7 +86,6 @@ namespace Calculator
             switch (currentMode)
             {
                 case NumberMode.Real:
-                    // Проверяем, что строка валидна для p-ичного числа
                     if (!IsValidRealString(realStr))
                         realStr = "0";
                     break;
@@ -98,18 +94,86 @@ namespace Calculator
                         fractionStr = "0";
                     break;
                 case NumberMode.Complex:
-                    if (!IsValidComplexString(complexStr))
-                        complexStr = "0";
-                    editingImaginary = false;
-                    hasImaginarySeparator = complexStr.Contains("i");
+                    ParseComplexString(complexStr);
                     break;
+            }
+        }
+
+        private void ParseComplexString(string str)
+        {
+            if (string.IsNullOrEmpty(str) || str == "0")
+            {
+                complexRealPart = "0";
+                complexImagPart = "";
+                isEditingImaginary = false;
+                complexStr = "0";
+                return;
+            }
+
+            // Парсим строку вида "a+bi" или "a-bi" или "a" или "bi"
+            int iPos = str.IndexOf('i');
+            if (iPos == -1)
+            {
+                // Только действительная часть
+                complexRealPart = str;
+                complexImagPart = "";
+                isEditingImaginary = false;
+            }
+            else
+            {
+                // Есть мнимая часть
+                string imagPart = str.Substring(0, iPos);
+                string realPart = "";
+
+                int plusPos = str.LastIndexOf('+', iPos);
+                int minusPos = str.LastIndexOf('-', iPos);
+
+                if (minusPos > 0 && (plusPos < 0 || minusPos > plusPos))
+                {
+                    realPart = str.Substring(0, minusPos);
+                    imagPart = str.Substring(minusPos, iPos - minusPos);
+                }
+                else if (plusPos >= 0)
+                {
+                    realPart = str.Substring(0, plusPos);
+                    imagPart = str.Substring(plusPos, iPos - plusPos);
+                }
+                else
+                {
+                    realPart = "";
+                    imagPart = imagPart;
+                }
+
+                complexRealPart = string.IsNullOrEmpty(realPart) ? "0" : realPart;
+
+                if (string.IsNullOrEmpty(imagPart) || imagPart == "+" || imagPart == "-")
+                    imagPart += "1";
+                complexImagPart = imagPart;
+                isEditingImaginary = true;
+            }
+            UpdateComplexString();
+        }
+
+        private void UpdateComplexString()
+        {
+            if (string.IsNullOrEmpty(complexImagPart) || complexImagPart == "0")
+            {
+                complexStr = complexRealPart;
+            }
+            else if (complexRealPart == "0")
+            {
+                complexStr = complexImagPart + "i";
+            }
+            else
+            {
+                string sign = complexImagPart.StartsWith("-") ? "" : "+";
+                complexStr = $"{complexRealPart}{sign}{complexImagPart}i";
             }
         }
 
         private bool IsValidRealString(string s)
         {
             if (string.IsNullOrEmpty(s)) return false;
-            // Допустимые символы: цифры 0-9,A-F, запятая, знак минус
             foreach (char ch in s)
             {
                 if (ch == '-' || ch == ',') continue;
@@ -129,26 +193,9 @@ namespace Calculator
         private bool IsValidFractionString(string s)
         {
             if (string.IsNullOrEmpty(s)) return false;
-            // Дробь вида "число/число" или просто число
             string[] parts = s.Split('/');
             if (parts.Length > 2) return false;
             return IsValidRealString(parts[0]) && (parts.Length == 1 || IsValidRealString(parts[1]));
-        }
-
-        private bool IsValidComplexString(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return false;
-            // Комплексное число: "a+bi" или "a" или "bi"
-            // Допускаем только простой формат
-            int iPos = s.IndexOf('i');
-            if (iPos == -1)
-                return IsValidRealString(s);
-
-            string withoutI = s.Replace("i", "");
-            if (string.IsNullOrEmpty(withoutI) || withoutI == "+" || withoutI == "-")
-                return true;
-
-            return IsValidRealString(withoutI);
         }
 
         public string GetString()
@@ -173,9 +220,7 @@ namespace Calculator
                     fractionStr = string.IsNullOrEmpty(value) ? "0" : value;
                     break;
                 case NumberMode.Complex:
-                    complexStr = string.IsNullOrEmpty(value) ? "0" : value;
-                    hasImaginarySeparator = complexStr.Contains("i");
-                    editingImaginary = hasImaginarySeparator && !complexStr.EndsWith("i");
+                    ParseComplexString(string.IsNullOrEmpty(value) ? "0" : value);
                     break;
             }
         }
@@ -203,14 +248,12 @@ namespace Calculator
 
         private string EditFraction(int command)
         {
-            // Специальная обработка для кнопки дроби
             if (command == TCtrl.CMD_FRACTION)
             {
                 if (!fractionStr.Contains("/"))
                     fractionStr += "/";
                 return fractionStr;
             }
-
             fractionStr = ApplyBasicEdit(fractionStr, command, IsValidRealDigit);
             return fractionStr;
         }
@@ -218,24 +261,46 @@ namespace Calculator
         private string EditComplex(int command)
         {
             // Специальная обработка для кнопки i
-            if (command == 100) // Специальный код для кнопки i
+            if (command == TCtrl.CMD_IMAGINARY)
             {
-                if (!complexStr.Contains("i"))
+                if (string.IsNullOrEmpty(complexImagPart))
                 {
-                    complexStr += "i";
-                    hasImaginarySeparator = true;
-                    editingImaginary = true;
+                    // Начинаем ввод мнимой части
+                    complexImagPart = "1";
+                    isEditingImaginary = true;
                 }
+                else if (complexImagPart == "1" && isEditingImaginary)
+                {
+                    // Уже есть мнимая часть, ничего не делаем
+                }
+                UpdateComplexString();
                 return complexStr;
             }
 
-            // Обычное редактирование
-            complexStr = ApplyBasicEdit(complexStr, command, IsValidRealDigit);
+            // Редактирование в зависимости от того, какую часть редактируем
+            if (isEditingImaginary)
+            {
+                string newImagPart = ApplyBasicEdit(complexImagPart, command, IsValidRealDigit);
+                if (newImagPart != "0")
+                {
+                    complexImagPart = newImagPart;
+                }
+                else
+                {
+                    complexImagPart = "";
+                    isEditingImaginary = false;
+                }
+            }
+            else
+            {
+                string newRealPart = ApplyBasicEdit(complexRealPart, command, IsValidRealDigit);
+                if (newRealPart != "0" || string.IsNullOrEmpty(complexImagPart))
+                {
+                    complexRealPart = newRealPart;
+                }
+            }
 
-            // Обновляем флаги
-            hasImaginarySeparator = complexStr.Contains("i");
-            editingImaginary = hasImaginarySeparator && !complexStr.EndsWith("i");
-
+            UpdateComplexString();
             return complexStr;
         }
 
@@ -243,10 +308,9 @@ namespace Calculator
         {
             if (command >= 0 && command <= 15)
             {
-                // Добавление цифры
                 char ch = TPNumber.DigitToChar(command);
-                if (current == "0")
-                    current = ch.ToString();
+                if (current == "0" || current == "-0")
+                    current = (current.StartsWith("-") ? "-" : "") + ch;
                 else
                     current += ch;
             }
@@ -260,6 +324,11 @@ namespace Calculator
                 if (current.Length > 1)
                     current = current[..^1];
                 else
+                    current = "0";
+
+                if (current == "-" || current == "")
+                    current = "0";
+                if (current == "-0")
                     current = "0";
             }
             else if (command == TCtrl.CMD_CLEAR)
