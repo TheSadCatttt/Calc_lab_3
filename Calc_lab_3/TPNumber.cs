@@ -3,20 +3,22 @@ using System.Text;
 
 namespace Calculator
 {
-    public class TPNumber
+    public class TPNumber : TANumber
     {
         private double n; // Внутреннее представление числа в десятичной форме
         private int b; // Основание системы счисления (2..16)
         private int c; // Точность (количество знаков после запятой)
 
-        public TPNumber(double a = 0, int b = 10, int c = 10) // Конструктор с числом, основанием и точностью
+        public TPNumber() : this(0, 10, 10) { }
+
+        public TPNumber(double a = 0, int b = 10, int c = 10)
         {
             this.b = CheckBase(b);
             this.c = CheckPrecision(c);
             this.n = Math.Round(a, c, MidpointRounding.AwayFromZero);
         }
 
-        public TPNumber(string a, int b = 10, int c = 10) // Конструктор с текстовым представлением числа, основанием и точностью
+        public TPNumber(string a, int b = 10, int c = 10)
         {
             this.b = CheckBase(b);
             this.c = CheckPrecision(c);
@@ -24,10 +26,72 @@ namespace Calculator
             this.n = Math.Round(this.n, c, MidpointRounding.AwayFromZero);
         }
 
-        public double GetNumber() => n;
-        public int GetBase() => b;
-        public int GetPrecision() => c;
+        // Переопределение методов TANumber
+        public override TANumber Add(TANumber other)
+        {
+            TPNumber otherNum = other as TPNumber ?? throw new InvalidOperationException("Несовместимые типы");
+            EnsureCompatible(otherNum);
+            return new TPNumber(n + otherNum.n, b, c);
+        }
 
+        public override TANumber Subtract(TANumber other)
+        {
+            TPNumber otherNum = other as TPNumber ?? throw new InvalidOperationException("Несовместимые типы");
+            EnsureCompatible(otherNum);
+            return new TPNumber(n - otherNum.n, b, c);
+        }
+
+        public override TANumber Multiply(TANumber other)
+        {
+            TPNumber otherNum = other as TPNumber ?? throw new InvalidOperationException("Несовместимые типы");
+            EnsureCompatible(otherNum);
+            return new TPNumber(n * otherNum.n, b, c);
+        }
+
+        public override TANumber Divide(TANumber other)
+        {
+            TPNumber otherNum = other as TPNumber ?? throw new InvalidOperationException("Несовместимые типы");
+            EnsureCompatible(otherNum);
+            if (otherNum.IsZero())
+                throw new DivideByZeroException("Деление на ноль");
+            return new TPNumber(n / otherNum.n, b, c);
+        }
+
+        public override TANumber Square()
+        {
+            return new TPNumber(n * n, b, c);
+        }
+
+        public override TANumber Reciprocal()
+        {
+            if (IsZero())
+                throw new DivideByZeroException("Обращение нуля");
+            return new TPNumber(1.0 / n, b, c);
+        }
+
+        public override TANumber Negate()
+        {
+            return new TPNumber(-n, b, c);
+        }
+
+        public override bool IsZero() => Math.Abs(n) < 1e-12;
+
+        public override bool Equals(TANumber other)
+        {
+            TPNumber otherNum = other as TPNumber;
+            if (otherNum == null) return false;
+            return Math.Abs(n - otherNum.n) < 1e-12 && b == otherNum.b && c == otherNum.c;
+        }
+
+        public override TANumber Copy() => new TPNumber(n, b, c);
+
+        public override int GetBase() => b;
+        public override int GetPrecision() => c;
+
+        // Переопределяем виртуальный метод GetNumber из TANumber
+        public override double GetNumber() => n;
+
+        // Дополнительные методы для TPNumber
         public void SetBase(int newB)
         {
             this.b = CheckBase(newB);
@@ -37,49 +101,6 @@ namespace Calculator
         {
             this.c = CheckPrecision(newC);
         }
-
-        public bool IsZero() => Math.Abs(n) < 1e-12;
-
-        public TPNumber Copy() => new TPNumber(n, b, c);
-
-        public TPNumber Add(TPNumber other)
-        {
-            EnsureCompatible(other);
-            return new TPNumber(n + other.n, b, c);
-        }
-
-        public TPNumber Subtract(TPNumber other)
-        {
-            EnsureCompatible(other);
-            double resultValue = n - other.n;
-            Console.WriteLine($"Subtract: {n} - {other.n} = {resultValue}");
-            return new TPNumber(resultValue, b, c);
-        }
-
-        public TPNumber Multiply(TPNumber other)
-        {
-            EnsureCompatible(other);
-            return new TPNumber(n * other.n, b, c);
-        }
-
-        public TPNumber Divide(TPNumber other)
-        {
-            EnsureCompatible(other);
-            if (other.IsZero())
-                throw new DivideByZeroException("Деление на ноль");
-            return new TPNumber(n / other.n, b, c);
-        }
-
-        public TPNumber Square() => new TPNumber(n * n, b, c);
-
-        public TPNumber Reciprocal()
-        {
-            if (IsZero())
-                throw new DivideByZeroException("Обращение нуля");
-            return new TPNumber(1.0 / n, b, c);
-        }
-
-        public TPNumber Negate() => new TPNumber(-n, b, c);
 
         public override string ToString()
         {
@@ -239,6 +260,5 @@ namespace Calculator
             if (c != other.c)
                 throw new InvalidOperationException("Точности не совпадают");
         }
-
     }
 }

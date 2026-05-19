@@ -4,9 +4,14 @@ using System.Text;
 namespace Calculator
 {
     public enum TCtrlState { Start, Editing, OpSet, Result }
+    public enum CalculatorMode { Real, Fraction, Complex }
 
+    /// <summary>
+    /// Управление универсальным калькулятором
+    /// </summary>
     public class TCtrl
     {
+        // Константы команд
         public const int CMD_DIGIT_0 = 0;
         public const int CMD_DIGIT_1 = 1;
         public const int CMD_DIGIT_2 = 2;
@@ -41,63 +46,415 @@ namespace Calculator
         public const int CMD_COPY = 32;
         public const int CMD_PASTE = 33;
         public const int CMD_RESET = 34;
+        public const int CMD_IMAGINARY = 100;
 
-        private TEditor editor;
-        private TProc<TPNumber> processor;
-        private TMemory<TPNumber> memory;
+        // Поля класса
+        private TModeEditor editor;
+        private object processor; // Будет хранить TProc<TPNumber>, TProc<TFrac> или TProc<TComplex>
+        private object memory;    // Будет хранить TMemory<TPNumber>, TMemory<TFrac> или TMemory<TComplex>
         private TCtrlState state;
         private int currentBase;
         private int currentPrecision;
+        private CalculatorMode currentMode;
 
-        // Для хранения последней выполненной функции (для повторения через Enter)
+        // Для истории
         private TFunc lastFunction;
         private bool lastWasFunction;
-
-        // ── История вычислений ───────────────────────────────────────────────
-        // Хранит строки вида "3 + sqr(2) = 7"
         private readonly StringBuilder historyBuilder = new StringBuilder();
-
-        // Промежуточное выражение, которое отображается ДО нажатия =
-        // Например: "3 +" или "3 + sqr(2)"
         private string expressionInProgress = "";
-
-        // Левый операнд в виде строки для истории
         private string historyLeft = "";
-
-        // Символ операции для истории
         private string historyOp = "";
 
+        // Свойства
+        public TCtrlState State => state;
+        public string Display => editor.GetString();
+        public bool MemoryOn => GetMemoryState() == TMemoryState.On;
+        public int CurrentBase => currentBase;
+        public int CurrentPrecision => currentPrecision;
+        public CalculatorMode GetMode() => currentMode;
         public string ExpressionInProgress => expressionInProgress;
         public string History => historyBuilder.ToString();
 
-        public TCtrl(int numberBase = 10, int precision = 10)
+        // Конструктор
+        public TCtrl(int numberBase = 10, int precision = 6, CalculatorMode mode = CalculatorMode.Real)
         {
             currentBase = numberBase;
             currentPrecision = precision;
-            editor = new TEditor(numberBase);
-            var zero = new TPNumber(0, numberBase, precision);
-            processor = new TProc<TPNumber>(zero, zero);
-            memory = new TMemory<TPNumber>(zero);
+            currentMode = mode;
+
+            editor = new TModeEditor(numberBase, precision, ModeToEditorMode(mode));
+            InitializeProcessorAndMemory();
             state = TCtrlState.Start;
             lastWasFunction = false;
         }
 
-        public TCtrlState State => state;
-        public string Display => editor.GetString();
-        public bool MemoryOn => memory.GetState() == TMemoryState.On;
-        public int CurrentBase => currentBase;
+        private void InitializeProcessorAndMemory()
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    var zeroReal = new TPNumber(0, currentBase, currentPrecision);
+                    processor = new TProc<TPNumber>(zeroReal, zeroReal);
+                    memory = new TMemory<TPNumber>(zeroReal);
+                    break;
+                case CalculatorMode.Fraction:
+                    var zeroFrac = new TFrac(0, 1, currentBase, currentPrecision);
+                    processor = new TProc<TFrac>(zeroFrac, zeroFrac);
+                    memory = new TMemory<TFrac>(zeroFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    var zeroComplex = new TComplex(0, 0, currentBase, currentPrecision);
+                    processor = new TProc<TComplex>(zeroComplex, zeroComplex);
+                    memory = new TMemory<TComplex>(zeroComplex);
+                    break;
+            }
+        }
+
+        private TModeEditor.NumberMode ModeToEditorMode(CalculatorMode mode) => mode switch
+        {
+            CalculatorMode.Real => TModeEditor.NumberMode.Real,
+            CalculatorMode.Fraction => TModeEditor.NumberMode.Fraction,
+            CalculatorMode.Complex => TModeEditor.NumberMode.Complex,
+            _ => TModeEditor.NumberMode.Real
+        };
+
+        private TANumber CreateNumber(string value)
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => new TPNumber(value, currentBase, currentPrecision),
+                CalculatorMode.Fraction => new TFrac(value, currentBase, currentPrecision),
+                CalculatorMode.Complex => new TComplex(value, currentBase, currentPrecision),
+                _ => new TPNumber(value, currentBase, currentPrecision)
+            };
+        }
+
+        private TANumber ReadCurrentNumber()
+        {
+            try
+            {
+                return CreateNumber(editor.GetString());
+            }
+            catch
+            {
+                return CreateNumber("0");
+            }
+        }
+
+        private void WriteToEditor(TANumber value)
+        {
+            editor.SetString(value.ToString());
+        }
+
+        // Вспомогательные методы для работы с processor и memory
+        private void SetLeftOperand(TANumber value)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TProc<TPNumber>)processor).SetLeftOperand(value as TPNumber);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TProc<TFrac>)processor).SetLeftOperand(value as TFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TProc<TComplex>)processor).SetLeftOperand(value as TComplex);
+                    break;
+            }
+        }
+
+        private void SetRightOperand(TANumber value)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TProc<TPNumber>)processor).SetRightOperand(value as TPNumber);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TProc<TFrac>)processor).SetRightOperand(value as TFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TProc<TComplex>)processor).SetRightOperand(value as TComplex);
+                    break;
+            }
+        }
+
+        private TANumber GetLeftOperand()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).GetLeftOperand() as TANumber,
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).GetLeftOperand() as TANumber,
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).GetLeftOperand() as TANumber,
+                _ => null
+            };
+        }
+
+        private TANumber RunOperation()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).RunOperation() as TANumber,
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).RunOperation() as TANumber,
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).RunOperation() as TANumber,
+                _ => null
+            };
+        }
+
+        private TANumber RunFunction(TFunc func)
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).RunFunction(func) as TANumber,
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).RunFunction(func) as TANumber,
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).RunFunction(func) as TANumber,
+                _ => null
+            };
+        }
+
+        private TANumber RunFunctionOnOperand(TFunc func, TANumber operand)
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).RunFunctionOnOperand(func, operand as TPNumber) as TANumber,
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).RunFunctionOnOperand(func, operand as TFrac) as TANumber,
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).RunFunctionOnOperand(func, operand as TComplex) as TANumber,
+                _ => null
+            };
+        }
+
+        private void ResetProcessor(TANumber left, TANumber right)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TProc<TPNumber>)processor).Reset(left as TPNumber, right as TPNumber);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TProc<TFrac>)processor).Reset(left as TFrac, right as TFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TProc<TComplex>)processor).Reset(left as TComplex, right as TComplex);
+                    break;
+            }
+        }
+
+        private TMemoryState GetMemoryState()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TMemory<TPNumber>)memory).GetState(),
+                CalculatorMode.Fraction => ((TMemory<TFrac>)memory).GetState(),
+                CalculatorMode.Complex => ((TMemory<TComplex>)memory).GetState(),
+                _ => TMemoryState.Off
+            };
+        }
+
+        private void MemoryStore(TANumber value)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TMemory<TPNumber>)memory).Store(value as TPNumber);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TMemory<TFrac>)memory).Store(value as TFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TMemory<TComplex>)memory).Store(value as TComplex);
+                    break;
+            }
+        }
+
+        private TANumber MemoryTake()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TMemory<TPNumber>)memory).Take() as TANumber,
+                CalculatorMode.Fraction => ((TMemory<TFrac>)memory).Take() as TANumber,
+                CalculatorMode.Complex => ((TMemory<TComplex>)memory).Take() as TANumber,
+                _ => null
+            };
+        }
+
+        private void MemoryAdd(TANumber value)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TMemory<TPNumber>)memory).Add(value as TPNumber);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TMemory<TFrac>)memory).Add(value as TFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TMemory<TComplex>)memory).Add(value as TComplex);
+                    break;
+            }
+        }
+
+        private void MemoryClear(TANumber zero)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TMemory<TPNumber>)memory).Clear(zero as TPNumber);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TMemory<TFrac>)memory).Clear(zero as TFrac);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TMemory<TComplex>)memory).Clear(zero as TComplex);
+                    break;
+            }
+        }
+
+        private void ClearOperation()
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TProc<TPNumber>)processor).ClearOperation();
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TProc<TFrac>)processor).ClearOperation();
+                    break;
+                case CalculatorMode.Complex:
+                    ((TProc<TComplex>)processor).ClearOperation();
+                    break;
+            }
+        }
+
+        private void SetOperation(TOprtn op)
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TProc<TPNumber>)processor).SetOperation(op);
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TProc<TFrac>)processor).SetOperation(op);
+                    break;
+                case CalculatorMode.Complex:
+                    ((TProc<TComplex>)processor).SetOperation(op);
+                    break;
+            }
+        }
+
+        private TOprtn GetOperation()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).GetOperation(),
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).GetOperation(),
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).GetOperation(),
+                _ => TOprtn.None
+            };
+        }
+
+        private TANumber GetLastRightOperand()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).GetLastRightOperand() as TANumber,
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).GetLastRightOperand() as TANumber,
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).GetLastRightOperand() as TANumber,
+                _ => null
+            };
+        }
+
+        private TOprtn GetLastOperation()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).GetLastOperation(),
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).GetLastOperation(),
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).GetLastOperation(),
+                _ => TOprtn.None
+            };
+        }
+
+        private void ClearRightOperand()
+        {
+            switch (currentMode)
+            {
+                case CalculatorMode.Real:
+                    ((TProc<TPNumber>)processor).ClearRightOperand();
+                    break;
+                case CalculatorMode.Fraction:
+                    ((TProc<TFrac>)processor).ClearRightOperand();
+                    break;
+                case CalculatorMode.Complex:
+                    ((TProc<TComplex>)processor).ClearRightOperand();
+                    break;
+            }
+        }
+
+        private TANumber RepeatLastOperation()
+        {
+            return currentMode switch
+            {
+                CalculatorMode.Real => ((TProc<TPNumber>)processor).RepeatLastOperation() as TANumber,
+                CalculatorMode.Fraction => ((TProc<TFrac>)processor).RepeatLastOperation() as TANumber,
+                CalculatorMode.Complex => ((TProc<TComplex>)processor).RepeatLastOperation() as TANumber,
+                _ => null
+            };
+        }
+
+        private void AppendHistory(string line)
+        {
+            if (historyBuilder.Length > 0)
+                historyBuilder.AppendLine();
+            historyBuilder.Append(line);
+        }
+
+        private static string OpSymbol(TOprtn op) => op switch
+        {
+            TOprtn.Add => "+",
+            TOprtn.Sub => "-",
+            TOprtn.Mul => "×",
+            TOprtn.Dvd => "÷",
+            _ => ""
+        };
+
+        // Публичные методы
+        public void SetMode(CalculatorMode newMode)
+        {
+            if (currentMode == newMode) return;
+
+            currentMode = newMode;
+            editor.SetMode(ModeToEditorMode(newMode));
+            InitializeProcessorAndMemory();
+            ExecuteReset();
+        }
 
         public void SetBase(int newBase)
         {
             if (newBase == currentBase) return;
-
             currentBase = newBase;
             editor.SetBase(newBase);
 
             try
             {
-                TPNumber current = new TPNumber(editor.GetString(), currentBase, currentPrecision);
-                editor.SetString(current.ToString());
+                TANumber current = ReadCurrentNumber();
+                WriteToEditor(current);
+            }
+            catch
+            {
+                editor.Clear();
+            }
+        }
+
+        public void SetPrecision(int newPrecision)
+        {
+            if (newPrecision == currentPrecision) return;
+            currentPrecision = newPrecision;
+            editor.SetPrecision(newPrecision);
+
+            try
+            {
+                TANumber current = ReadCurrentNumber();
+                WriteToEditor(current);
             }
             catch
             {
@@ -107,7 +464,14 @@ namespace Calculator
 
         public string ExecuteEditorCommand(int cmd)
         {
-            // Если мы в состоянии Result и пользователь начал ввод цифры или разделителя - начинаем новый ввод
+            if (currentMode == CalculatorMode.Complex && cmd == CMD_IMAGINARY)
+            {
+                editor.Edit(CMD_IMAGINARY);
+                if (state == TCtrlState.Start)
+                    state = TCtrlState.Editing;
+                return editor.GetString();
+            }
+
             if (state == TCtrlState.Result && (cmd >= 0 && cmd <= 16 || cmd == CMD_SIGN))
             {
                 editor.Clear();
@@ -133,7 +497,7 @@ namespace Calculator
 
         public string ExecuteOperation(int cmd)
         {
-            TPNumber current = ReadCurrentNumber();
+            TANumber current = ReadCurrentNumber();
             TOprtn op;
             string opSymbol;
 
@@ -143,57 +507,52 @@ namespace Calculator
                 case CMD_SUB: op = TOprtn.Sub; opSymbol = "-"; break;
                 case CMD_MUL: op = TOprtn.Mul; opSymbol = "×"; break;
                 case CMD_DIV: op = TOprtn.Dvd; opSymbol = "÷"; break;
-                default: return Display;
+                default: return editor.GetString();
             }
 
             lastWasFunction = false;
 
-            // Если в состоянии Editing и есть ожидающая операция - сначала вычисляем
-            if (state == TCtrlState.Editing && processor.GetOperation() != TOprtn.None)
+            if (state == TCtrlState.Editing && GetOperation() != TOprtn.None)
             {
-                processor.SetRightOperand(current);
-                TPNumber result = processor.RunOperation();
+                SetRightOperand(current);
+                TANumber result = RunOperation();
 
-                processor.SetLeftOperand(result);
-                processor.SetOperation(op);
-                processor.ClearRightOperand();
+                SetLeftOperand(result);
+                SetOperation(op);
+                ClearRightOperand();
 
                 WriteToEditor(result);
                 state = TCtrlState.OpSet;
 
-                // Обновляем историю выражения
                 historyLeft = result.ToString();
                 historyOp = opSymbol;
                 expressionInProgress = $"{historyLeft} {historyOp}";
-                return Display;
+                return editor.GetString();
             }
 
-            // Если мы в состоянии Result, используем текущее число как левый операнд
             if (state == TCtrlState.Result)
             {
-                processor.SetLeftOperand(current);
-                processor.SetOperation(op);
+                SetLeftOperand(current);
+                SetOperation(op);
                 state = TCtrlState.OpSet;
 
                 historyLeft = current.ToString();
                 historyOp = opSymbol;
                 expressionInProgress = $"{historyLeft} {historyOp}";
                 editor.Clear();
-                return Display;
+                return editor.GetString();
             }
 
             if (state == TCtrlState.OpSet)
             {
-                // Смена операции без ввода правого — просто обновляем операцию
-                processor.SetOperation(op);
+                SetOperation(op);
                 historyOp = opSymbol;
                 expressionInProgress = $"{historyLeft} {historyOp}";
             }
             else
             {
-                // Start или Editing без ожидающей операции
-                processor.SetLeftOperand(current);
-                processor.SetOperation(op);
+                SetLeftOperand(current);
+                SetOperation(op);
 
                 historyLeft = current.ToString();
                 historyOp = opSymbol;
@@ -203,25 +562,25 @@ namespace Calculator
             state = TCtrlState.OpSet;
             editor.Clear();
 
-            return processor.GetLeftOperand().ToString();
+            return GetLeftOperand()?.ToString() ?? "0";
         }
 
         public string ExecuteEqual()
         {
-            // Если была выполнена функция и теперь нажали Enter - повторяем функцию
             if (state == TCtrlState.Result && lastWasFunction)
             {
                 try
                 {
-                    TPNumber current = ReadCurrentNumber();
-                    processor.SetLeftOperand(current);
-                    TPNumber result = processor.RunFunction(lastFunction);
+                    TANumber current = ReadCurrentNumber();
+                    SetLeftOperand(current);
+                    TANumber result = RunFunction(lastFunction);
                     string funcName = lastFunction == TFunc.Sqr ? "sqr" : "1/";
                     AppendHistory($"{funcName}({current}) = {result}");
                     expressionInProgress = "";
                     WriteToEditor(result);
-                    processor.SetLeftOperand(result);
-                    return Display;
+                    SetLeftOperand(result);
+                    state = TCtrlState.Result;
+                    return editor.GetString();
                 }
                 catch (Exception ex)
                 {
@@ -229,22 +588,22 @@ namespace Calculator
                 }
             }
 
-            // Если в состоянии Result - повторяем последнюю операцию
             if (state == TCtrlState.Result)
             {
                 try
                 {
-                    string leftBefore = processor.GetLeftOperand().ToString();
-                    string rightRepeat = processor.GetLastRightOperand()?.ToString() ?? "";
-                    string opRepeat = OpSymbol(processor.GetLastOperation());
+                    string leftBefore = GetLeftOperand()?.ToString() ?? "";
+                    string rightRepeat = GetLastRightOperand()?.ToString() ?? "";
+                    string opRepeat = OpSymbol(GetLastOperation());
 
-                    TPNumber result = processor.RepeatLastOperation();
+                    TANumber result = RepeatLastOperation();
                     AppendHistory($"{leftBefore} {opRepeat} {rightRepeat} = {result}");
                     expressionInProgress = "";
                     WriteToEditor(result);
-                    processor.SetLeftOperand(result);
+                    SetLeftOperand(result);
                     lastWasFunction = false;
-                    return Display;
+                    state = TCtrlState.Result;
+                    return editor.GetString();
                 }
                 catch (Exception ex)
                 {
@@ -252,15 +611,13 @@ namespace Calculator
                 }
             }
 
-            // Обычное выполнение операции
-            TPNumber currentVal = ReadCurrentNumber();
-            processor.SetRightOperand(currentVal);
+            TANumber currentVal = ReadCurrentNumber();
+            SetRightOperand(currentVal);
 
-            // Формируем строку для истории
             string rightStr = currentVal.ToString();
             string fullExpr = $"{historyLeft} {historyOp} {rightStr}";
 
-            TPNumber operationResult = processor.RunOperation();
+            TANumber operationResult = RunOperation();
 
             AppendHistory($"{fullExpr} = {operationResult}");
             expressionInProgress = "";
@@ -268,140 +625,115 @@ namespace Calculator
             historyOp = "";
 
             WriteToEditor(operationResult);
-            processor.SetLeftOperand(operationResult);
-            processor.ClearOperation();
+            SetLeftOperand(operationResult);
+            ClearOperation();
             lastWasFunction = false;
 
             state = TCtrlState.Result;
-            return Display;
+            return editor.GetString();
         }
 
         public string ExecuteFunction(int cmd)
         {
-            TPNumber current = ReadCurrentNumber();
+            TANumber current = ReadCurrentNumber();
             TFunc func = cmd == CMD_SQR ? TFunc.Sqr : TFunc.Rev;
             string funcName = func == TFunc.Sqr ? "sqr" : "1/";
 
-            TPNumber result;
+            TANumber result;
 
-            // ── ИСПРАВЛЕНИЕ БАГ #3 ──────────────────────────────────────────
-            // Если есть ожидающая операция (состояние OpSet ИЛИ Editing с операцией)
-            // функция применяется к ПРАВОМУ операнду, левый и операция не трогаются.
-            if (state == TCtrlState.OpSet ||
-                (state == TCtrlState.Editing && processor.GetOperation() != TOprtn.None))
+            if (state == TCtrlState.OpSet || (state == TCtrlState.Editing && GetOperation() != TOprtn.None))
             {
-                // Применяем функцию к текущему числу (правому операнду)
-                result = processor.RunFunctionOnOperand(func, current);
-                // Сохраняем результат как правый операнд
-                processor.SetRightOperand(result);
-                // Показываем результат на дисплее, не трогая левый операнд и операцию
+                result = RunFunctionOnOperand(func, current);
+                SetRightOperand(result);
                 WriteToEditor(result);
-                // Обновляем выражение в строке истории
                 expressionInProgress = $"{historyLeft} {historyOp} {funcName}({current})";
                 state = TCtrlState.OpSet;
             }
             else if (state == TCtrlState.Result)
             {
-                // Применяем функцию к текущему результату
-                processor.SetLeftOperand(current);
-                result = processor.RunFunction(func);
+                SetLeftOperand(current);
+                result = RunFunction(func);
                 AppendHistory($"{funcName}({current}) = {result}");
                 expressionInProgress = "";
                 WriteToEditor(result);
-                processor.SetLeftOperand(result);
-                processor.ClearOperation();
+                SetLeftOperand(result);
+                ClearOperation();
                 state = TCtrlState.Result;
             }
             else
             {
-                // Start или Editing без ожидающей операции
-                processor.SetLeftOperand(current);
-                result = processor.RunFunction(func);
+                SetLeftOperand(current);
+                result = RunFunction(func);
                 AppendHistory($"{funcName}({current}) = {result}");
                 expressionInProgress = "";
                 WriteToEditor(result);
-                processor.SetLeftOperand(result);
-                processor.ClearOperation();
+                SetLeftOperand(result);
+                ClearOperation();
                 state = TCtrlState.Result;
             }
 
             lastWasFunction = true;
             lastFunction = func;
 
-            return Display;
+            return editor.GetString();
         }
 
         public string ExecuteMemory(int cmd)
         {
-            TPNumber current = ReadCurrentNumber();
-            var zero = new TPNumber(0, currentBase, currentPrecision);
+            TANumber current = ReadCurrentNumber();
+            var zero = CreateNumber("0");
 
             switch (cmd)
             {
                 case CMD_MS:
-                    memory.Store(current);
+                    MemoryStore(current);
                     break;
 
                 case CMD_MR:
-                    TPNumber memValue = memory.Take() as TPNumber;
-                    TPNumber converted = memValue != null
-                        ? new TPNumber(memValue.GetNumber(), currentBase, currentPrecision)
-                        : zero;
-
-                    WriteToEditor(converted);
-
-                    // ── ИСПРАВЛЕНИЕ БАГ #1 ──────────────────────────────────────────
-                    // Если есть ожидающая операция, число из памяти становится
-                    // правым операндом — остаёмся в OpSet, чтобы = выполнило операцию.
-                    // Если операции нет — это просто загрузка значения (Result).
-                    if (processor.GetOperation() != TOprtn.None)
+                    TANumber memValue = MemoryTake();
+                    if (memValue != null)
                     {
-                        processor.SetRightOperand(converted);
-                        expressionInProgress = $"{historyLeft} {historyOp} {converted}";
-                        state = TCtrlState.OpSet;
-                    }
-                    else
-                    {
-                        processor.SetLeftOperand(converted);
-                        processor.ClearOperation();
-                        expressionInProgress = "";
-                        state = TCtrlState.Result;
+                        WriteToEditor(memValue);
+
+                        if (GetOperation() != TOprtn.None)
+                        {
+                            SetRightOperand(memValue);
+                            expressionInProgress = $"{historyLeft} {historyOp} {memValue}";
+                            state = TCtrlState.OpSet;
+                        }
+                        else
+                        {
+                            SetLeftOperand(memValue);
+                            ClearOperation();
+                            expressionInProgress = "";
+                            state = TCtrlState.Result;
+                        }
                     }
                     lastWasFunction = false;
                     break;
 
                 case CMD_MP:
-                    TPNumber memVal = memory.Take() as TPNumber;
-                    if (memVal != null)
-                    {
-                        TPNumber memConverted = new TPNumber(memVal.GetNumber(), currentBase, currentPrecision);
-                        TPNumber sum = memConverted.Add(current);
-                        memory.Store(sum);
-                    }
-                    else
-                    {
-                        memory.Add(current);
-                    }
+                    MemoryAdd(current);
                     break;
 
                 case CMD_MC:
-                    memory.Clear(zero);
+                    MemoryClear(zero);
                     break;
             }
-            return Display;
+            return editor.GetString();
         }
 
         public string ExecuteReset()
         {
             editor.Clear();
-            var zero = new TPNumber(0, currentBase, currentPrecision);
-            processor.Reset(zero, zero);
+            var zero = CreateNumber("0");
+            ResetProcessor(zero, zero);
             state = TCtrlState.Start;
             lastWasFunction = false;
             expressionInProgress = "";
             historyLeft = "";
             historyOp = "";
-            return Display;
+            return editor.GetString();
         }
 
         public void ClearHistory()
@@ -409,62 +741,27 @@ namespace Calculator
             historyBuilder.Clear();
         }
 
-        public string CopyToClipboard() => Display;
+        public string CopyToClipboard() => editor.GetString();
 
         public string PasteFromClipboard(string text)
         {
-            if (string.IsNullOrWhiteSpace(text)) return Display;
+            if (string.IsNullOrWhiteSpace(text)) return editor.GetString();
 
             try
             {
-                TPNumber parsed = new TPNumber(text.Trim(), currentBase, currentPrecision);
+                TANumber parsed = CreateNumber(text.Trim());
                 WriteToEditor(parsed);
                 state = TCtrlState.Result;
-                processor.SetLeftOperand(parsed);
-                processor.ClearOperation();
+                SetLeftOperand(parsed);
+                ClearOperation();
                 lastWasFunction = false;
                 expressionInProgress = "";
             }
             catch
             {
-                // Если не удалось распарсить, игнорируем
+                // Если не удалось распарсить - игнорируем
             }
-            return Display;
+            return editor.GetString();
         }
-
-        // ── Вспомогательные методы ───────────────────────────────────────────
-
-        private TPNumber ReadCurrentNumber()
-        {
-            try
-            {
-                return new TPNumber(editor.GetString(), currentBase, currentPrecision);
-            }
-            catch
-            {
-                return new TPNumber(0, currentBase, currentPrecision);
-            }
-        }
-
-        private void WriteToEditor(TPNumber value)
-        {
-            editor.SetString(value.ToString());
-        }
-
-        private void AppendHistory(string line)
-        {
-            if (historyBuilder.Length > 0)
-                historyBuilder.AppendLine();
-            historyBuilder.Append(line);
-        }
-
-        private static string OpSymbol(TOprtn op) => op switch
-        {
-            TOprtn.Add => "+",
-            TOprtn.Sub => "-",
-            TOprtn.Mul => "×",
-            TOprtn.Dvd => "÷",
-            _ => ""
-        };
     }
 }

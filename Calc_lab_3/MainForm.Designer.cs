@@ -25,6 +25,12 @@
         private System.Windows.Forms.ToolStripMenuItem helpMenu;
         private System.Windows.Forms.ToolStripMenuItem aboutItem;
 
+        // Группа выбора режима
+        private System.Windows.Forms.GroupBox gbMode;
+        private System.Windows.Forms.RadioButton rbReal;
+        private System.Windows.Forms.RadioButton rbFraction;
+        private System.Windows.Forms.RadioButton rbComplex;
+
         // Панель кнопок
         private System.Windows.Forms.TableLayoutPanel buttonPanel;
 
@@ -68,8 +74,9 @@
         private System.Windows.Forms.Button btnSign;
         private System.Windows.Forms.Button btnBackspace;
         private System.Windows.Forms.Button btnClear;
-        private System.Windows.Forms.Button btnReset;
+        private System.Windows.Forms.Button btnReset;      // C (полный сброс)
         private System.Windows.Forms.Button btnEqual;
+        private System.Windows.Forms.Button btnImaginary;  // i (мнимая единица)
 
         protected override void Dispose(bool disposing)
         {
@@ -80,10 +87,12 @@
 
         private void InitializeComponent()
         {
+            // ── Компоненты ──────────────────────────────────────────────────────
             this.txtDisplay = new System.Windows.Forms.TextBox();
             this.lblMemory = new System.Windows.Forms.Label();
             this.lblBase = new System.Windows.Forms.Label();
             this.numBase = new System.Windows.Forms.NumericUpDown();
+
             this.mainMenu = new System.Windows.Forms.MenuStrip();
             this.editMenu = new System.Windows.Forms.ToolStripMenuItem();
             this.copyItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -97,6 +106,11 @@
             this.precision8 = new System.Windows.Forms.ToolStripMenuItem();
             this.helpMenu = new System.Windows.Forms.ToolStripMenuItem();
             this.aboutItem = new System.Windows.Forms.ToolStripMenuItem();
+
+            this.gbMode = new System.Windows.Forms.GroupBox();
+            this.rbReal = new System.Windows.Forms.RadioButton();
+            this.rbFraction = new System.Windows.Forms.RadioButton();
+            this.rbComplex = new System.Windows.Forms.RadioButton();
 
             this.buttonPanel = new System.Windows.Forms.TableLayoutPanel();
 
@@ -139,25 +153,27 @@
             this.btnClear = new System.Windows.Forms.Button();
             this.btnReset = new System.Windows.Forms.Button();
             this.btnEqual = new System.Windows.Forms.Button();
+            this.btnImaginary = new System.Windows.Forms.Button();
 
             ((System.ComponentModel.ISupportInitialize)(this.numBase)).BeginInit();
             this.mainMenu.SuspendLayout();
+            this.gbMode.SuspendLayout();
             this.buttonPanel.SuspendLayout();
             this.SuspendLayout();
 
-            // ── txtDisplay ──────────────────────────────────────────────────
+            // ── txtDisplay ──────────────────────────────────────────────────────
             this.txtDisplay.Font = new System.Drawing.Font("Consolas", 18F);
             this.txtDisplay.Location = new System.Drawing.Point(12, 57);
             this.txtDisplay.Name = "txtDisplay";
             this.txtDisplay.ReadOnly = true;
-            this.txtDisplay.Size = new System.Drawing.Size(390, 35);
+            this.txtDisplay.Size = new System.Drawing.Size(430, 35);
             this.txtDisplay.TabIndex = 0;
             this.txtDisplay.Text = "0";
             this.txtDisplay.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
-            this.txtDisplay.BackColor = System.Drawing.SystemColors.Window; // или Control
-            this.txtDisplay.TabStop = false; // КЛЮЧЕВОЙ МОМЕНТ - отключаем фокус
+            this.txtDisplay.BackColor = System.Drawing.SystemColors.Window;
+            this.txtDisplay.TabStop = false;
 
-            // ── lblMemory ───────────────────────────────────────────────────
+            // ── lblMemory ───────────────────────────────────────────────────────
             this.lblMemory.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.lblMemory.Location = new System.Drawing.Point(12, 32);
             this.lblMemory.Name = "lblMemory";
@@ -165,16 +181,16 @@
             this.lblMemory.Text = "";
             this.lblMemory.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
-            // ── lblBase ─────────────────────────────────────────────────────
+            // ── lblBase ─────────────────────────────────────────────────────────
             this.lblBase.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.lblBase.Location = new System.Drawing.Point(295, 32);
+            this.lblBase.Location = new System.Drawing.Point(335, 32);
             this.lblBase.Name = "lblBase";
             this.lblBase.Size = new System.Drawing.Size(45, 25);
             this.lblBase.Text = "Осн:";
             this.lblBase.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
 
-            // ── numBase ─────────────────────────────────────────────────────
-            this.numBase.Location = new System.Drawing.Point(342, 34);
+            // ── numBase ─────────────────────────────────────────────────────────
+            this.numBase.Location = new System.Drawing.Point(382, 34);
             this.numBase.Minimum = 2;
             this.numBase.Maximum = 16;
             this.numBase.Name = "numBase";
@@ -182,16 +198,16 @@
             this.numBase.TabIndex = 1;
             this.numBase.Value = 10;
 
-            // ── mainMenu ────────────────────────────────────────────────────
+            // ── mainMenu ────────────────────────────────────────────────────────
             this.mainMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.editMenu, this.settingsMenu, this.helpMenu });
+                this.editMenu, this.settingsMenu, this.helpMenu});
             this.mainMenu.Location = new System.Drawing.Point(0, 0);
             this.mainMenu.Name = "mainMenu";
-            this.mainMenu.Size = new System.Drawing.Size(420, 24);
+            this.mainMenu.Size = new System.Drawing.Size(460, 24);
             this.mainMenu.TabIndex = 2;
 
             this.editMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.copyItem, this.pasteItem });
+                this.copyItem, this.pasteItem});
             this.editMenu.Name = "editMenu";
             this.editMenu.Text = "Правка";
 
@@ -204,29 +220,94 @@
             this.pasteItem.Text = "Вставить";
 
             this.settingsMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.precisionMenuItem });
+                this.precisionMenuItem});
             this.settingsMenu.Name = "settingsMenu";
             this.settingsMenu.Text = "Настройка";
 
             this.precisionMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.precision0, this.precision2, this.precision4, this.precision6, this.precision8 });
+                this.precision0, this.precision2, this.precision4, this.precision6, this.precision8});
             this.precisionMenuItem.Name = "precisionMenuItem";
             this.precisionMenuItem.Text = "Точность";
 
-            this.precision0.Name = "precision0"; this.precision0.Text = "0"; this.precision0.Tag = 0;
-            this.precision2.Name = "precision2"; this.precision2.Text = "2"; this.precision2.Tag = 2;
-            this.precision4.Name = "precision4"; this.precision4.Text = "4"; this.precision4.Tag = 4;
-            this.precision6.Name = "precision6"; this.precision6.Text = "6"; this.precision6.Tag = 6; this.precision6.Checked = true;
-            this.precision8.Name = "precision8"; this.precision8.Text = "8"; this.precision8.Tag = 8;
+            this.precision0.Name = "precision0";
+            this.precision0.Text = "0";
+            this.precision0.Tag = 0;
 
-            this.helpMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] { this.aboutItem });
+            this.precision2.Name = "precision2";
+            this.precision2.Text = "2";
+            this.precision2.Tag = 2;
+
+            this.precision4.Name = "precision4";
+            this.precision4.Text = "4";
+            this.precision4.Tag = 4;
+
+            this.precision6.Name = "precision6";
+            this.precision6.Text = "6";
+            this.precision6.Tag = 6;
+            this.precision6.Checked = true;
+
+            this.precision8.Name = "precision8";
+            this.precision8.Text = "8";
+            this.precision8.Tag = 8;
+
+            this.helpMenu.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+                this.aboutItem});
             this.helpMenu.Name = "helpMenu";
             this.helpMenu.Text = "Справка";
 
             this.aboutItem.Name = "aboutItem";
             this.aboutItem.Text = "О программе";
 
-            // ── Вспомогательный метод настройки кнопки ──────────────────────
+            // ── gbMode (группа выбора режима) ───────────────────────────────────
+            this.gbMode.Controls.AddRange(new System.Windows.Forms.Control[] {
+                this.rbReal, this.rbFraction, this.rbComplex});
+            this.gbMode.Location = new System.Drawing.Point(12, 100);
+            this.gbMode.Name = "gbMode";
+            this.gbMode.Size = new System.Drawing.Size(240, 40);
+            this.gbMode.TabIndex = 3;
+            this.gbMode.TabStop = false;
+            this.gbMode.Text = "Режим";
+
+            this.rbReal.AutoSize = true;
+            this.rbReal.Checked = true;
+            this.rbReal.Location = new System.Drawing.Point(10, 18);
+            this.rbReal.Name = "rbReal";
+            this.rbReal.Size = new System.Drawing.Size(70, 17);
+            this.rbReal.TabIndex = 0;
+            this.rbReal.TabStop = true;
+            this.rbReal.Text = "p-ичные";
+            this.rbReal.UseVisualStyleBackColor = true;
+
+            this.rbFraction.AutoSize = true;
+            this.rbFraction.Location = new System.Drawing.Point(85, 18);
+            this.rbFraction.Name = "rbFraction";
+            this.rbFraction.Size = new System.Drawing.Size(60, 17);
+            this.rbFraction.TabIndex = 1;
+            this.rbFraction.Text = "Дроби";
+            this.rbFraction.UseVisualStyleBackColor = true;
+
+            this.rbComplex.AutoSize = true;
+            this.rbComplex.Location = new System.Drawing.Point(150, 18);
+            this.rbComplex.Name = "rbComplex";
+            this.rbComplex.Size = new System.Drawing.Size(85, 17);
+            this.rbComplex.TabIndex = 2;
+            this.rbComplex.Text = "Комплексные";
+            this.rbComplex.UseVisualStyleBackColor = true;
+
+            // ── buttonPanel ─────────────────────────────────────────────────────
+            this.buttonPanel.Location = new System.Drawing.Point(12, 150);
+            this.buttonPanel.Name = "buttonPanel";
+            this.buttonPanel.Size = new System.Drawing.Size(430, 380);
+            this.buttonPanel.TabIndex = 4;
+            this.buttonPanel.ColumnCount = 6;
+            this.buttonPanel.RowCount = 6;
+
+            for (int i = 0; i < 6; i++)
+                this.buttonPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100f / 6));
+            for (int i = 0; i < 6; i++)
+                this.buttonPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100f / 6));
+
+            // ── Настройка стилей кнопок ─────────────────────────────────────────
             System.Drawing.Font fontNormal = new System.Drawing.Font("Segoe UI", 10F);
             System.Drawing.Font fontSmall = new System.Drawing.Font("Segoe UI", 9F);
             System.Drawing.Font fontLarge = new System.Drawing.Font("Segoe UI", 12F);
@@ -234,7 +315,7 @@
             System.Drawing.Color opColor = System.Drawing.Color.FromArgb(240, 240, 240);
             System.Drawing.Color memColor = System.Drawing.Color.FromArgb(220, 220, 220);
 
-            // ── Цифры ────────────────────────────────────────────────────────
+            // ── Цифровые кнопки 0-F ─────────────────────────────────────────────
             string[] digitLabels = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F" };
             System.Windows.Forms.Button[] allDigits = {
                 btnDigit0, btnDigit1, btnDigit2, btnDigit3, btnDigit4, btnDigit5,
@@ -249,10 +330,11 @@
                 allDigits[i].Name = "btnDigit" + digitLabels[i];
                 allDigits[i].Tag = i;
                 allDigits[i].Text = digitLabels[i];
+                allDigits[i].UseVisualStyleBackColor = true;
             }
             this.digitButtons = allDigits;
 
-            // ── Операции ─────────────────────────────────────────────────────
+            // ── Кнопки операций ─────────────────────────────────────────────────
             string[] opLabels = { "+", "-", "×", "÷", "x²", "1/x" };
             int[] opTags = { TCtrl.CMD_ADD, TCtrl.CMD_SUB, TCtrl.CMD_MUL, TCtrl.CMD_DIV, TCtrl.CMD_SQR, TCtrl.CMD_REV };
             System.Windows.Forms.Button[] allOps = { btnAdd, btnSub, btnMul, btnDiv, btnSqr, btnRev };
@@ -264,10 +346,11 @@
                 allOps[i].BackColor = opColor;
                 allOps[i].Tag = opTags[i];
                 allOps[i].Text = opLabels[i];
+                allOps[i].UseVisualStyleBackColor = false;
             }
             this.opButtons = allOps;
 
-            // ── Память ───────────────────────────────────────────────────────
+            // ── Кнопки памяти ───────────────────────────────────────────────────
             string[] memLabels = { "MC", "MR", "MS", "M+" };
             int[] memTags = { TCtrl.CMD_MC, TCtrl.CMD_MR, TCtrl.CMD_MS, TCtrl.CMD_MP };
             System.Windows.Forms.Button[] allMem = { btnMC, btnMR, btnMS, btnMP };
@@ -279,45 +362,57 @@
                 allMem[i].BackColor = memColor;
                 allMem[i].Tag = memTags[i];
                 allMem[i].Text = memLabels[i];
+                allMem[i].UseVisualStyleBackColor = false;
             }
             this.memButtons = allMem;
 
-            // ── Специальные ──────────────────────────────────────────────────
+            // ── Специальные кнопки ──────────────────────────────────────────────
+            // Запятая
             this.btnSeparator.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnSeparator.Font = fontLarge;
             this.btnSeparator.Margin = new System.Windows.Forms.Padding(2);
             this.btnSeparator.Name = "btnSeparator";
             this.btnSeparator.Tag = TCtrl.CMD_SEPARATOR;
             this.btnSeparator.Text = ",";
+            this.btnSeparator.UseVisualStyleBackColor = true;
 
+            // Смена знака
             this.btnSign.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnSign.Font = fontSmall;
             this.btnSign.Margin = new System.Windows.Forms.Padding(2);
             this.btnSign.Name = "btnSign";
             this.btnSign.Tag = TCtrl.CMD_SIGN;
             this.btnSign.Text = "+/-";
+            this.btnSign.UseVisualStyleBackColor = true;
 
+            // Backspace
             this.btnBackspace.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnBackspace.Font = fontNormal;
             this.btnBackspace.Margin = new System.Windows.Forms.Padding(2);
             this.btnBackspace.Name = "btnBackspace";
             this.btnBackspace.Tag = TCtrl.CMD_BACKSPACE;
             this.btnBackspace.Text = "←";
+            this.btnBackspace.UseVisualStyleBackColor = true;
 
+            // CE (очистить ввод)
             this.btnClear.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnClear.Font = fontNormal;
             this.btnClear.Margin = new System.Windows.Forms.Padding(2);
             this.btnClear.Name = "btnClear";
             this.btnClear.Tag = TCtrl.CMD_CLEAR;
             this.btnClear.Text = "CE";
+            this.btnClear.UseVisualStyleBackColor = true;
 
+            // C (полный сброс)
             this.btnReset.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnReset.Font = fontNormal;
             this.btnReset.Margin = new System.Windows.Forms.Padding(2);
             this.btnReset.Name = "btnReset";
             this.btnReset.Tag = TCtrl.CMD_RESET;
             this.btnReset.Text = "C";
+            this.btnReset.UseVisualStyleBackColor = true;
 
+            // Равно
             this.btnEqual.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnEqual.Font = fontBoldLg;
             this.btnEqual.Margin = new System.Windows.Forms.Padding(2);
@@ -326,18 +421,20 @@
             this.btnEqual.Text = "=";
             this.btnEqual.BackColor = System.Drawing.Color.FromArgb(62, 163, 255);
             this.btnEqual.ForeColor = System.Drawing.Color.White;
+            this.btnEqual.UseVisualStyleBackColor = false;
 
-            // ── TableLayoutPanel ─────────────────────────────────────────────
-            this.buttonPanel.Location = new System.Drawing.Point(12, 102);
-            this.buttonPanel.Name = "buttonPanel";
-            this.buttonPanel.Size = new System.Drawing.Size(396, 380);
-            this.buttonPanel.ColumnCount = 6;
-            this.buttonPanel.RowCount = 6;
+            // i (мнимая единица) — только для комплексных чисел
+            this.btnImaginary.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnImaginary.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
+            this.btnImaginary.Margin = new System.Windows.Forms.Padding(2);
+            this.btnImaginary.Name = "btnImaginary";
+            this.btnImaginary.Tag = TCtrl.CMD_IMAGINARY;
+            this.btnImaginary.Text = "i";
+            this.btnImaginary.BackColor = System.Drawing.Color.FromArgb(255, 220, 150);
+            this.btnImaginary.UseVisualStyleBackColor = false;
+            this.btnImaginary.Enabled = false; // По умолчанию выключена (только в режиме Complex)
 
-            for (int i = 0; i < 6; i++)
-                this.buttonPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100f / 6));
-            for (int i = 0; i < 6; i++)
-                this.buttonPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100f / 6));
+            // ── Размещение кнопок в TableLayoutPanel ────────────────────────────
 
             // Строка 0: MC, MR, MS, M+, BS, CE
             this.buttonPanel.Controls.Add(this.btnMC, 0, 0);
@@ -347,28 +444,28 @@
             this.buttonPanel.Controls.Add(this.btnBackspace, 4, 0);
             this.buttonPanel.Controls.Add(this.btnClear, 5, 0);
 
-            // Строка 1: 7 8 9  ÷  x²
+            // Строка 1: 7, 8, 9, ÷, x², (пусто)
             this.buttonPanel.Controls.Add(this.btnDigit7, 0, 1);
             this.buttonPanel.Controls.Add(this.btnDigit8, 1, 1);
             this.buttonPanel.Controls.Add(this.btnDigit9, 2, 1);
             this.buttonPanel.Controls.Add(this.btnDiv, 3, 1);
             this.buttonPanel.Controls.Add(this.btnSqr, 4, 1);
 
-            // Строка 2: 4 5 6  ×  1/x
+            // Строка 2: 4, 5, 6, ×, 1/x, (пусто)
             this.buttonPanel.Controls.Add(this.btnDigit4, 0, 2);
             this.buttonPanel.Controls.Add(this.btnDigit5, 1, 2);
             this.buttonPanel.Controls.Add(this.btnDigit6, 2, 2);
             this.buttonPanel.Controls.Add(this.btnMul, 3, 2);
             this.buttonPanel.Controls.Add(this.btnRev, 4, 2);
 
-            // Строка 3: 1 2 3  -  C
+            // Строка 3: 1, 2, 3, -, C, (пусто)
             this.buttonPanel.Controls.Add(this.btnDigit1, 0, 3);
             this.buttonPanel.Controls.Add(this.btnDigit2, 1, 3);
             this.buttonPanel.Controls.Add(this.btnDigit3, 2, 3);
             this.buttonPanel.Controls.Add(this.btnSub, 3, 3);
             this.buttonPanel.Controls.Add(this.btnReset, 4, 3);
 
-            // Строка 4: 0 A B  +  = (span 2)
+            // Строка 4: 0, A, B, +, = (span 2)
             this.buttonPanel.Controls.Add(this.btnDigit0, 0, 4);
             this.buttonPanel.Controls.Add(this.btnDigitA, 1, 4);
             this.buttonPanel.Controls.Add(this.btnDigitB, 2, 4);
@@ -376,27 +473,65 @@
             this.buttonPanel.Controls.Add(this.btnEqual, 4, 4);
             this.buttonPanel.SetColumnSpan(this.btnEqual, 2);
 
-            // Строка 5: C D E F  ,  +/-
+            // Строка 5: C, D, E, F, запятая, i, +/-
+            // (заметим, что колонок 6, поэтому размещаем 6 кнопок)
             this.buttonPanel.Controls.Add(this.btnDigitC, 0, 5);
             this.buttonPanel.Controls.Add(this.btnDigitD, 1, 5);
             this.buttonPanel.Controls.Add(this.btnDigitE, 2, 5);
             this.buttonPanel.Controls.Add(this.btnDigitF, 3, 5);
             this.buttonPanel.Controls.Add(this.btnSeparator, 4, 5);
-            this.buttonPanel.Controls.Add(this.btnSign, 5, 5);
+            this.buttonPanel.Controls.Add(this.btnImaginary, 5, 5);
 
-            // ── MainForm ─────────────────────────────────────────────────────
+            // Кнопка +/- не поместилась, разместим её на месте запятой (4,5),
+            // а запятую на 5,5, но тогда i некуда. 
+            // Переделаем: добавим +/- на место F, а F сдвинем.
+            // Перераспределим строку 5:
+            this.buttonPanel.Controls.Remove(this.btnDigitF);
+            this.buttonPanel.Controls.Remove(this.btnSeparator);
+            this.buttonPanel.Controls.Remove(this.btnImaginary);
+
+            // Новая строка 5: C, D, E, +/-, запятая, i
+            this.buttonPanel.Controls.Add(this.btnDigitC, 0, 5);
+            this.buttonPanel.Controls.Add(this.btnDigitD, 1, 5);
+            this.buttonPanel.Controls.Add(this.btnDigitE, 2, 5);
+            this.buttonPanel.Controls.Add(this.btnSign, 3, 5);      // +/-
+            this.buttonPanel.Controls.Add(this.btnSeparator, 4, 5);  // ,
+            this.buttonPanel.Controls.Add(this.btnImaginary, 5, 5);  // i
+
+            // Букву F разместим в строке 4 колонка 5 (там сейчас Equal, который span 2)
+            // Создадим новую строку 6 для F или разместим в строке 4 колонку 5 свободной?
+            // Проще: добавим кнопку F в строку 4 колонку 5, а Equal сделаем колонку 4 и 5?
+            // Переделаем строку 4:
+            this.buttonPanel.Controls.Remove(this.btnEqual);
+            this.buttonPanel.Controls.Remove(this.btnDigitA);
+            this.buttonPanel.Controls.Remove(this.btnDigitB);
+
+            // Строка 4: 0, A, B, F, +, =
+            this.buttonPanel.Controls.Add(this.btnDigit0, 0, 4);
+            this.buttonPanel.Controls.Add(this.btnDigitA, 1, 4);
+            this.buttonPanel.Controls.Add(this.btnDigitB, 2, 4);
+            this.buttonPanel.Controls.Add(this.btnDigitF, 3, 4);    // F
+            this.buttonPanel.Controls.Add(this.btnAdd, 4, 4);        // +
+            this.buttonPanel.Controls.Add(this.btnEqual, 5, 4);      // =
+
+            // Убираем span у Equal
+            this.buttonPanel.SetColumnSpan(this.btnEqual, 1);
+
+            // ── MainForm ────────────────────────────────────────────────────────
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(420, 502);
+            this.ClientSize = new System.Drawing.Size(460, 550);
             this.KeyPreview = true;
             this.MainMenuStrip = this.mainMenu;
             this.Name = "MainForm";
-            this.Text = "Калькулятор p-ичных чисел";
+            this.Text = "Универсальный калькулятор (p-ичные / дроби / комплексные)";
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
 
+            // Добавление всех элементов управления на форму
             this.Controls.Add(this.buttonPanel);
+            this.Controls.Add(this.gbMode);
             this.Controls.Add(this.numBase);
             this.Controls.Add(this.lblBase);
             this.Controls.Add(this.lblMemory);
@@ -406,6 +541,8 @@
             ((System.ComponentModel.ISupportInitialize)(this.numBase)).EndInit();
             this.mainMenu.ResumeLayout(false);
             this.mainMenu.PerformLayout();
+            this.gbMode.ResumeLayout(false);
+            this.gbMode.PerformLayout();
             this.buttonPanel.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();

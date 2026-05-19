@@ -12,14 +12,14 @@ namespace Calculator
         {
             InitializeComponent();
 
-            // Инициализация массивов (если не сделано в Designer)
+            // Инициализация массивов
             if (digitButtons == null)
             {
                 digitButtons = new Button[] {
-            btnDigit0, btnDigit1, btnDigit2, btnDigit3, btnDigit4, btnDigit5,
-            btnDigit6, btnDigit7, btnDigit8, btnDigit9,
-            btnDigitA, btnDigitB, btnDigitC, btnDigitD, btnDigitE, btnDigitF
-        };
+                    btnDigit0, btnDigit1, btnDigit2, btnDigit3, btnDigit4, btnDigit5,
+                    btnDigit6, btnDigit7, btnDigit8, btnDigit9,
+                    btnDigitA, btnDigitB, btnDigitC, btnDigitD, btnDigitE, btnDigitF
+                };
             }
             if (opButtons == null)
             {
@@ -30,7 +30,9 @@ namespace Calculator
                 memButtons = new Button[] { btnMC, btnMR, btnMS, btnMP };
             }
 
-            controller = new TCtrl(10, 6);
+            // Создание контроллера (по умолчанию p-ичные числа, основание 10, точность 6)
+            controller = new TCtrl(10, 6, CalculatorMode.Real);
+
             SubscribeEvents();
             UpdateUI();
             UpdateDigitButtons();
@@ -38,6 +40,7 @@ namespace Calculator
 
         private void SubscribeEvents()
         {
+            // Изменение основания
             numBase.ValueChanged += (s, e) =>
             {
                 controller.SetBase((int)numBase.Value);
@@ -45,36 +48,54 @@ namespace Calculator
                 UpdateDigitButtons();
             };
 
+            // Меню: копирование/вставка
             copyItem.Click += (s, e) => CopyToClipboard();
             pasteItem.Click += (s, e) => PasteFromClipboard();
             aboutItem.Click += (s, e) => ShowAbout();
 
+            // Меню: точность
             precision0.Click += (s, e) => SetPrecision(0);
             precision2.Click += (s, e) => SetPrecision(2);
             precision4.Click += (s, e) => SetPrecision(4);
             precision6.Click += (s, e) => SetPrecision(6);
             precision8.Click += (s, e) => SetPrecision(8);
 
+            // Переключение режимов
+            rbReal.CheckedChanged += (s, e) =>
+            {
+                if (rbReal.Checked) SwitchMode(CalculatorMode.Real);
+            };
+            rbFraction.CheckedChanged += (s, e) =>
+            {
+                if (rbFraction.Checked) SwitchMode(CalculatorMode.Fraction);
+            };
+            rbComplex.CheckedChanged += (s, e) =>
+            {
+                if (rbComplex.Checked) SwitchMode(CalculatorMode.Complex);
+            };
+
             // Цифровые кнопки
             for (int i = 0; i < digitButtons.Length; i++)
                 digitButtons[i].Click += DigitClick;
 
-            // Операции
+            // Кнопки операций
             for (int i = 0; i < opButtons.Length; i++)
                 opButtons[i].Click += OpClick;
 
-            // Память
+            // Кнопки памяти
             for (int i = 0; i < memButtons.Length; i++)
                 memButtons[i].Click += MemClick;
 
-            // Специальные
+            // Специальные кнопки
             btnSeparator.Click += SpecialClick;
             btnSign.Click += SpecialClick;
             btnBackspace.Click += SpecialClick;
             btnClear.Click += SpecialClick;
             btnReset.Click += (s, e) => ExecuteCommand(TCtrl.CMD_RESET);
             btnEqual.Click += (s, e) => ExecuteCommand(TCtrl.CMD_EQUAL);
+            btnImaginary.Click += (s, e) => ExecuteCommand(TCtrl.CMD_IMAGINARY);
 
+            // Клавиатура
             this.KeyPress += OnKeyPress;
 
             AddTooltips();
@@ -86,15 +107,38 @@ namespace Calculator
             tt.SetToolTip(btnSeparator, "Разделитель целой и дробной части");
             tt.SetToolTip(btnSign, "Сменить знак числа");
             tt.SetToolTip(btnBackspace, "Удалить последний символ");
-            tt.SetToolTip(btnClear, "Очистить ввод");
-            tt.SetToolTip(btnReset, "Полный сброс");
+            tt.SetToolTip(btnClear, "Очистить ввод (CE)");
+            tt.SetToolTip(btnReset, "Полный сброс (C)");
             tt.SetToolTip(btnEqual, "Вычислить");
-            tt.SetToolTip(memButtons[0], "Очистить память");
-            tt.SetToolTip(memButtons[1], "Восстановить из памяти");
-            tt.SetToolTip(memButtons[2], "Сохранить в память");
-            tt.SetToolTip(memButtons[3], "Добавить к памяти");
+            tt.SetToolTip(btnImaginary, "Мнимая единица (только для комплексных чисел)");
+            tt.SetToolTip(btnMC, "Очистить память");
+            tt.SetToolTip(btnMR, "Восстановить из памяти");
+            tt.SetToolTip(btnMS, "Сохранить в память");
+            tt.SetToolTip(btnMP, "Добавить к памяти");
             tt.SetToolTip(numBase, "Основание системы счисления (2-16)");
             tt.SetToolTip(txtDisplay, "Строка ввода/вывода");
+            tt.SetToolTip(rbReal, "Режим p-ичных чисел");
+            tt.SetToolTip(rbFraction, "Режим обыкновенных дробей");
+            tt.SetToolTip(rbComplex, "Режим комплексных чисел");
+        }
+
+        private void SwitchMode(CalculatorMode mode)
+        {
+            controller.SetMode(mode);
+            btnImaginary.Enabled = (mode == CalculatorMode.Complex);
+            UpdateUI();
+            UpdateDigitButtons();
+        }
+
+        private void SetPrecision(int precision)
+        {
+            controller.SetPrecision(precision);
+            UpdateUI();
+            UpdateDigitButtons();
+
+            // Обновляем галочки в меню
+            foreach (ToolStripMenuItem item in precisionMenuItem.DropDownItems)
+                item.Checked = ((int)item.Tag == precision);
         }
 
         private void DigitClick(object sender, EventArgs e)
@@ -131,33 +175,39 @@ namespace Calculator
             {
                 switch (cmd)
                 {
-                    case >= 0 and <= 15:
-                    case TCtrl.CMD_SEPARATOR:
-                    case TCtrl.CMD_BACKSPACE:
-                    case TCtrl.CMD_CLEAR:
-                    case TCtrl.CMD_SIGN:
+                    case >= 0 and <= 15:           // Цифры 0-F
+                    case TCtrl.CMD_SEPARATOR:       // Запятая
+                    case TCtrl.CMD_BACKSPACE:       // Backspace
+                    case TCtrl.CMD_CLEAR:           // CE
+                    case TCtrl.CMD_SIGN:            // +/-
+                    case TCtrl.CMD_IMAGINARY:       // i (для комплексных)
                         controller.ExecuteEditorCommand(cmd);
                         break;
-                    case TCtrl.CMD_ADD:
-                    case TCtrl.CMD_SUB:
-                    case TCtrl.CMD_MUL:
-                    case TCtrl.CMD_DIV:
+
+                    case TCtrl.CMD_ADD:             // +
+                    case TCtrl.CMD_SUB:             // -
+                    case TCtrl.CMD_MUL:             // ×
+                    case TCtrl.CMD_DIV:             // ÷
                         controller.ExecuteOperation(cmd);
                         break;
-                    case TCtrl.CMD_SQR:
-                    case TCtrl.CMD_REV:
+
+                    case TCtrl.CMD_SQR:             // x²
+                    case TCtrl.CMD_REV:             // 1/x
                         controller.ExecuteFunction(cmd);
                         break;
-                    case TCtrl.CMD_EQUAL:
+
+                    case TCtrl.CMD_EQUAL:           // =
                         controller.ExecuteEqual();
                         break;
-                    case TCtrl.CMD_MC:
-                    case TCtrl.CMD_MS:
-                    case TCtrl.CMD_MR:
-                    case TCtrl.CMD_MP:
+
+                    case TCtrl.CMD_MC:              // Очистить память
+                    case TCtrl.CMD_MS:              // Сохранить в память
+                    case TCtrl.CMD_MR:              // Восстановить из памяти
+                    case TCtrl.CMD_MP:              // Добавить к памяти
                         controller.ExecuteMemory(cmd);
                         break;
-                    case TCtrl.CMD_RESET:
+
+                    case TCtrl.CMD_RESET:           // Полный сброс
                         controller.ExecuteReset();
                         break;
                 }
@@ -192,16 +242,6 @@ namespace Calculator
             }
         }
 
-        private void SetPrecision(int precision)
-        {
-            controller = new TCtrl(controller.CurrentBase, precision);
-            UpdateUI();
-            UpdateDigitButtons();
-
-            foreach (ToolStripMenuItem item in precisionMenuItem.DropDownItems)
-                item.Checked = (int)item.Tag == precision;
-        }
-
         private void ShowAbout()
         {
             AboutForm about = new AboutForm();
@@ -212,21 +252,32 @@ namespace Calculator
         {
             txtDisplay.Text = controller.Display;
             lblMemory.Text = controller.MemoryOn ? "M" : "";
+
+            // Обновляем состояние радио-кнопок в соответствии с текущим режимом
+            CalculatorMode currentMode = controller.GetMode();
+            rbReal.Checked = (currentMode == CalculatorMode.Real);
+            rbFraction.Checked = (currentMode == CalculatorMode.Fraction);
+            rbComplex.Checked = (currentMode == CalculatorMode.Complex);
+
+            // Включаем/выключаем кнопку i
+            btnImaginary.Enabled = (currentMode == CalculatorMode.Complex);
+
             UpdateDigitButtons();
         }
 
         private void UpdateDigitButtons()
         {
             int curBase = controller.CurrentBase;
-            for (int i = 0; i < 16; i++)
+            for (int i = 0; i < digitButtons.Length; i++)
             {
                 if (digitButtons[i] != null)
-                    digitButtons[i].Enabled = i < curBase;
+                    digitButtons[i].Enabled = (i < curBase);
             }
         }
 
         private void OnKeyPress(object sender, KeyPressEventArgs e)
         {
+            // Цифры 0-9
             if (e.KeyChar >= '0' && e.KeyChar <= '9')
             {
                 int digit = e.KeyChar - '0';
@@ -234,6 +285,7 @@ namespace Calculator
                     ExecuteCommand(digit);
                 e.Handled = true;
             }
+            // Буквы A-F
             else if (e.KeyChar >= 'A' && e.KeyChar <= 'F')
             {
                 int digit = e.KeyChar - 'A' + 10;
@@ -248,22 +300,65 @@ namespace Calculator
                     ExecuteCommand(digit);
                 e.Handled = true;
             }
-            else if (e.KeyChar == '.' || e.KeyChar == ',') { ExecuteCommand(TCtrl.CMD_SEPARATOR); e.Handled = true; }
-            else if (e.KeyChar == '+') { ExecuteCommand(TCtrl.CMD_ADD); e.Handled = true; }
-            else if (e.KeyChar == '-') { ExecuteCommand(TCtrl.CMD_SUB); e.Handled = true; }
-            else if (e.KeyChar == '*') { ExecuteCommand(TCtrl.CMD_MUL); e.Handled = true; }
-            else if (e.KeyChar == '/') { ExecuteCommand(TCtrl.CMD_DIV); e.Handled = true; }
-            else if (e.KeyChar == '=' || e.KeyChar == (char)Keys.Enter) { ExecuteCommand(TCtrl.CMD_EQUAL); e.Handled = true; }
-            else if (e.KeyChar == '\b') { ExecuteCommand(TCtrl.CMD_BACKSPACE); e.Handled = true; }
+            // Разделитель
+            else if (e.KeyChar == '.' || e.KeyChar == ',')
+            {
+                ExecuteCommand(TCtrl.CMD_SEPARATOR);
+                e.Handled = true;
+            }
+            // Операции
+            else if (e.KeyChar == '+')
+            {
+                ExecuteCommand(TCtrl.CMD_ADD);
+                e.Handled = true;
+            }
+            else if (e.KeyChar == '-')
+            {
+                ExecuteCommand(TCtrl.CMD_SUB);
+                e.Handled = true;
+            }
+            else if (e.KeyChar == '*')
+            {
+                ExecuteCommand(TCtrl.CMD_MUL);
+                e.Handled = true;
+            }
+            else if (e.KeyChar == '/')
+            {
+                ExecuteCommand(TCtrl.CMD_DIV);
+                e.Handled = true;
+            }
+            // Равно и Enter
+            else if (e.KeyChar == '=' || e.KeyChar == (char)Keys.Enter)
+            {
+                ExecuteCommand(TCtrl.CMD_EQUAL);
+                e.Handled = true;
+            }
+            // Backspace
+            else if (e.KeyChar == '\b')
+            {
+                ExecuteCommand(TCtrl.CMD_BACKSPACE);
+                e.Handled = true;
+            }
+            // Буква i (для комплексных чисел)
+            else if (e.KeyChar == 'i' || e.KeyChar == 'I')
+            {
+                if (controller.GetMode() == CalculatorMode.Complex)
+                    ExecuteCommand(TCtrl.CMD_IMAGINARY);
+                e.Handled = true;
+            }
         }
 
         private string GetUserMessage(Exception ex)
         {
-            if (ex is DivideByZeroException) return "Деление на ноль недопустимо.";
-            if (ex is FormatException) return "Некорректный формат числа для текущего основания.";
-            if (ex is ArgumentOutOfRangeException) return "Основание должно быть в диапазоне 2..16.";
-            if (ex.InnerException != null) return GetUserMessage(ex.InnerException);
-            return "Произошла ошибка. Проверьте введённые данные.";
+            if (ex is DivideByZeroException)
+                return "Деление на ноль недопустимо.";
+            if (ex is FormatException)
+                return "Некорректный формат числа для текущего режима и основания.";
+            if (ex is ArgumentOutOfRangeException)
+                return "Основание должно быть в диапазоне 2..16.";
+            if (ex.InnerException != null)
+                return GetUserMessage(ex.InnerException);
+            return $"Произошла ошибка: {ex.Message}";
         }
     }
 }

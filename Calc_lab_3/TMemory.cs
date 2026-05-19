@@ -1,43 +1,42 @@
 ﻿namespace Calculator
 {
-    public enum TMemoryState { Off, On } // Перечисление для состояния памяти (выключена или включена)
+    public enum TMemoryState { Off, On }
 
-    public class TMemory<T> where T : class // Класс для управления памятью калькулятора
+    public class TMemory<T> where T : TANumber, new()
     {
-        private T fNumber; // Поле для хранения числа в памяти
-        private TMemoryState fState; // Поле для хранения состояния памяти
+        private T fNumber;
+        private TMemoryState fState;
 
-        public TMemory(T defaultValue) // Конструктор, который инициализирует память с заданным значением по умолчанию и устанавливает состояние в Off
+        public TMemory(T defaultValue)
         {
-            fNumber = defaultValue;
+            fNumber = defaultValue ?? new T();
             fState = TMemoryState.Off;
         }
 
-        public TMemoryState GetState() => fState; // Метод для получения текущего состояния памяти
-        public string GetStateString() => fState == TMemoryState.On ? "M" : ""; // Метод для получения строкового представления состояния памяти (возвращает "M", если память включена, и пустую строку, если выключена)
+        public TMemoryState GetState() => fState;
+        public string GetStateString() => fState == TMemoryState.On ? "M" : "";
 
-        public void Store(T e) // Метод для сохранения числа в памяти и включения состояния памяти
+        public void Store(T e)
         {
             fNumber = e;
             fState = TMemoryState.On;
         }
 
-        public T Take() // Метод для получения числа из памяти
+        public T Take()
         {
             return fNumber;
         }
 
-        public void Add(T e) // Метод для прибавления числа к числу в памяти и включения состояния памяти
+        public void Add(T e)
         {
-            dynamic dynNumber = fNumber;
-            dynamic dynE = e;
-            fNumber = (T)(dynNumber.Add(dynE));
+            TANumber result = fNumber.Add(e);
+            fNumber = result as T ?? new T();
             fState = TMemoryState.On;
         }
 
-        public void Clear(T zeroValue) // Метод для очистки памяти (устанавливает число в памяти в значение нуля и выключает состояние памяти)
+        public void Clear(T zeroValue)
         {
-            fNumber = zeroValue;
+            fNumber = zeroValue ?? new T();
             fState = TMemoryState.Off;
         }
     }

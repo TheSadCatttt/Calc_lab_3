@@ -5,192 +5,161 @@ namespace Calculator
     public enum TOprtn { None, Add, Sub, Mul, Dvd }
     public enum TFunc { Rev, Sqr }
 
-    public class TProc<T> where T : class
+    /// <summary>
+    /// Процессор для выполнения арифметических операций над числами типа T
+    /// Соответствует TProc из методички
+    /// </summary>
+    public class TProc<T> where T : TANumber, new()
     {
-        private T lopRes;
-        private T rop;
-        private TOprtn operation;
-        private TOprtn lastOperation; // Для повторения последней операции
-        private T lastRightOperand;   // Для повторения последней операции
+        private T lopRes;           // Левый операнд и результат (Lop_Res)
+        private T rop;              // Правый операнд (Rop)
+        private TOprtn operation;   // Текущая установленная операция
+        private TOprtn lastOperation;     // Для повторения последней операции
+        private T lastRightOperand;       // Для повторения последней операции
 
-        public void ClearRightOperand()
-        {
-            if (lopRes != null)
-            {
-                dynamic left = lopRes;
-                rop = (T)Activator.CreateInstance(typeof(T), 0, left.GetBase(), left.GetPrecision());
-            }
-            else
-            {
-                rop = null;
-            }
-        }
-
-        public TOprtn GetOperation() => operation;
-        public T RunFunctionOnOperand(TFunc func, T operand)
-        {
-            dynamic val = operand;
-
-            try
-            {
-                return func switch
-                {
-                    TFunc.Rev => (T)(val.Reciprocal()),
-                    TFunc.Sqr => (T)(val.Square()),
-                    _ => operand
-                };
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Ошибка выполнения функции", ex);
-            }
-        }
+        /// <summary>Конструктор процессора</summary>
         public TProc(T leftDefault, T rightDefault)
         {
-            lopRes = leftDefault;
-            rop = rightDefault;
+            lopRes = leftDefault ?? new T();
+            rop = rightDefault ?? new T();
             operation = TOprtn.None;
             lastOperation = TOprtn.None;
             lastRightOperand = null;
         }
 
+        /// <summary>Сброс процессора в начальное состояние</summary>
         public void Reset(T leftDefault, T rightDefault)
         {
-            lopRes = leftDefault;
-            rop = rightDefault;
+            lopRes = leftDefault ?? new T();
+            rop = rightDefault ?? new T();
             operation = TOprtn.None;
             lastOperation = TOprtn.None;
             lastRightOperand = null;
         }
 
-        public void ClearOperation() => operation = TOprtn.None;
+        /// <summary>Сброс операции</summary>
+        public void ClearOperation()
+        {
+            operation = TOprtn.None;
+        }
+
+        /// <summary>Установка операции</summary>
         public void SetOperation(TOprtn oprtn)
         {
             operation = oprtn;
-            // Запоминаем последнюю операцию только если это не None
             if (oprtn != TOprtn.None)
                 lastOperation = oprtn;
         }
 
-        public T GetLeftOperand() => lopRes;
-        public void SetLeftOperand(T operand) => lopRes = operand;
+        /// <summary>Получить текущую операцию</summary>
+        public TOprtn GetOperation() => operation;
 
-        public T GetRightOperand() => rop;
-        public void SetRightOperand(T operand)
+        /// <summary>Получить последнюю выполненную операцию</summary>
+        public TOprtn GetLastOperation() => lastOperation;
+
+        /// <summary>Получить последний правый операнд</summary>
+        public TANumber GetLastRightOperand() => lastRightOperand;
+
+        /// <summary>Чтение левого операнда</summary>
+        public TANumber GetLeftOperand() => lopRes;
+
+        /// <summary>Запись левого операнда</summary>
+        public void SetLeftOperand(TANumber operand)
         {
-            rop = operand;
-            // Запоминаем последний правый операнд для повторения
-            lastRightOperand = operand;
+            if (operand is T typedOperand)
+                lopRes = typedOperand;
+            else
+                throw new InvalidOperationException("Несовместимый тип операнда");
         }
 
-        // Повторение последней операции с текущим левым операндом
-        public T RepeatLastOperation()
+        /// <summary>Чтение правого операнда</summary>
+        public TANumber GetRightOperand() => rop;
+
+        /// <summary>Запись правого операнда</summary>
+        public void SetRightOperand(TANumber operand)
+        {
+            if (operand is T typedOperand)
+            {
+                rop = typedOperand;
+                lastRightOperand = typedOperand.Copy() as T;
+            }
+            else
+                throw new InvalidOperationException("Несовместимый тип операнда");
+        }
+
+        /// <summary>Очистка правого операнда (установка в 0)</summary>
+        public void ClearRightOperand()
+        {
+            rop = new T();
+        }
+
+        /// <summary>Повторение последней операции с текущим левым операндом</summary>
+        public TANumber RepeatLastOperation()
         {
             if (lastOperation == TOprtn.None || lastRightOperand == null)
                 throw new InvalidOperationException("Нет операции для повторения");
 
-            dynamic left = lopRes;
-            dynamic right = lastRightOperand;
+            TANumber result = lastOperation switch
+            {
+                TOprtn.Add => lopRes.Add(lastRightOperand),
+                TOprtn.Sub => lopRes.Subtract(lastRightOperand),
+                TOprtn.Mul => lopRes.Multiply(lastRightOperand),
+                TOprtn.Dvd => lopRes.Divide(lastRightOperand),
+                _ => lopRes.Copy()
+            };
 
-            try
-            {
-                switch (lastOperation)
-                {
-                    case TOprtn.Add:
-                        lopRes = (T)(left.Add(right));
-                        break;
-                    case TOprtn.Sub:
-                        lopRes = (T)(left.Subtract(right));
-                        break;
-                    case TOprtn.Mul:
-                        lopRes = (T)(left.Multiply(right));
-                        break;
-                    case TOprtn.Dvd:
-                        if (right.IsZero())
-                            throw new DivideByZeroException("Деление на ноль");
-                        lopRes = (T)(left.Divide(right));
-                        break;
-                    default:
-                        return lopRes;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Ошибка выполнения операции", ex);
-            }
+            lopRes = result as T ?? new T();
             return lopRes;
         }
 
-        public T RunOperation()
+        /// <summary>Выполнить установленную операцию</summary>
+        public TANumber RunOperation()
         {
             if (lopRes == null || rop == null)
                 throw new InvalidOperationException("Операнды не установлены");
 
-            dynamic left = lopRes;
-            dynamic right = rop;
-
-            try
+            TANumber result = operation switch
             {
-                Console.WriteLine($"RunOperation: left={left.GetNumber()}, right={right.GetNumber()}, op={operation}");
+                TOprtn.Add => lopRes.Add(rop),
+                TOprtn.Sub => lopRes.Subtract(rop),
+                TOprtn.Mul => lopRes.Multiply(rop),
+                TOprtn.Dvd => lopRes.Divide(rop),
+                _ => lopRes.Copy()
+            };
 
-                switch (operation)
-                {
-                    case TOprtn.Add:
-                        lopRes = (T)(left.Add(right));
-                        break;
-                    case TOprtn.Sub:
-                        lopRes = (T)(left.Subtract(right));
-                        break;
-                    case TOprtn.Mul:
-                        lopRes = (T)(left.Multiply(right));
-                        break;
-                    case TOprtn.Dvd:
-                        if (right.IsZero())
-                            throw new DivideByZeroException("Деление на ноль");
-                        lopRes = (T)(left.Divide(right));
-                        break;
-                    default:
-                        return lopRes;
-                }
-
-                // Запоминаем операцию и правый операнд для повторения
-                if (operation != TOprtn.None)
-                {
-                    lastOperation = operation;
-                    lastRightOperand = rop;
-                }
-
-                Console.WriteLine($"RunOperation result: {((TPNumber)(object)lopRes).GetNumber()}");
-            }
-            catch (Exception ex)
+            if (operation != TOprtn.None)
             {
-                throw new InvalidOperationException("Ошибка выполнения операции", ex);
+                lastOperation = operation;
+                lastRightOperand = rop.Copy() as T;
             }
+
+            lopRes = result as T ?? new T();
             return lopRes;
         }
 
-        public T RunFunction(TFunc func)
+        /// <summary>Выполнить функцию над левым операндом</summary>
+        public TANumber RunFunction(TFunc func)
         {
-            dynamic val = lopRes;
+            TANumber result = func switch
+            {
+                TFunc.Rev => lopRes.Reciprocal(),
+                TFunc.Sqr => lopRes.Square(),
+                _ => lopRes.Copy()
+            };
 
-            try
-            {
-                lopRes = func switch
-                {
-                    TFunc.Rev => (T)(val.Reciprocal()),
-                    TFunc.Sqr => (T)(val.Square()),
-                    _ => lopRes
-                };
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Ошибка выполнения функции", ex);
-            }
+            lopRes = result as T ?? new T();
             return lopRes;
         }
 
-        // Геттеры для последней операции (для отладки)
-        public TOprtn GetLastOperation() => lastOperation;
-        public T GetLastRightOperand() => lastRightOperand;
+        /// <summary>Выполнить функцию над заданным операндом</summary>
+        public TANumber RunFunctionOnOperand(TFunc func, TANumber operand)
+        {
+            return func switch
+            {
+                TFunc.Rev => operand.Reciprocal(),
+                TFunc.Sqr => operand.Square(),
+                _ => operand.Copy()
+            };
+        }
     }
 }
