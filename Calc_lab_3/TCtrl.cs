@@ -47,6 +47,7 @@ namespace Calculator
         public const int CMD_PASTE = 33;
         public const int CMD_RESET = 34;
         public const int CMD_IMAGINARY = 100;
+        public const int CMD_FRACTION = 101; // Кнопка для ввода дроби (a/b)
 
         // Поля класса
         private TModeEditor editor;

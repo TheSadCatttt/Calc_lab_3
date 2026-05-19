@@ -30,12 +30,53 @@ namespace Calculator
                 memButtons = new Button[] { btnMC, btnMR, btnMS, btnMP };
             }
 
+            // Настройка динамической кнопки в последней ячейке
+            SetupDynamicButton();
+
             // Создание контроллера (по умолчанию p-ичные числа, основание 10, точность 6)
             controller = new TCtrl(10, 6, CalculatorMode.Real);
 
             SubscribeEvents();
             UpdateUI();
             UpdateDigitButtons();
+        }
+
+        private void SetupDynamicButton()
+        {
+            // Очищаем ячейку (5,5)
+            var existingControl = buttonPanel.GetControlFromPosition(5, 5);
+            if (existingControl != null)
+                buttonPanel.Controls.Remove(existingControl);
+
+            // Добавляем кнопку i по умолчанию
+            buttonPanel.Controls.Add(btnImaginary, 5, 5);
+        }
+
+        private void SwapDynamicButton(CalculatorMode mode)
+        {
+            var currentControl = buttonPanel.GetControlFromPosition(5, 5);
+            if (currentControl != null)
+                buttonPanel.Controls.Remove(currentControl);
+
+            if (mode == CalculatorMode.Fraction)
+            {
+                buttonPanel.Controls.Add(btnFraction, 5, 5);
+                btnFraction.Enabled = true;
+                btnImaginary.Enabled = false;
+            }
+            else if (mode == CalculatorMode.Complex)
+            {
+                buttonPanel.Controls.Add(btnImaginary, 5, 5);
+                btnImaginary.Enabled = true;
+                btnFraction.Enabled = false;
+            }
+            else
+            {
+                // Для Real режима показываем i, но отключаем её
+                buttonPanel.Controls.Add(btnImaginary, 5, 5);
+                btnImaginary.Enabled = false;
+                btnFraction.Enabled = false;
+            }
         }
 
         private void SubscribeEvents()
@@ -94,6 +135,7 @@ namespace Calculator
             btnReset.Click += (s, e) => ExecuteCommand(TCtrl.CMD_RESET);
             btnEqual.Click += (s, e) => ExecuteCommand(TCtrl.CMD_EQUAL);
             btnImaginary.Click += (s, e) => ExecuteCommand(TCtrl.CMD_IMAGINARY);
+            btnFraction.Click += (s, e) => ExecuteCommand(TCtrl.CMD_FRACTION); // Новая кнопка дроби
 
             // Клавиатура
             this.KeyPress += OnKeyPress;
@@ -111,6 +153,7 @@ namespace Calculator
             tt.SetToolTip(btnReset, "Полный сброс (C)");
             tt.SetToolTip(btnEqual, "Вычислить");
             tt.SetToolTip(btnImaginary, "Мнимая единица (только для комплексных чисел)");
+            tt.SetToolTip(btnFraction, "Разделитель числителя и знаменателя (только для дробей)");
             tt.SetToolTip(btnMC, "Очистить память");
             tt.SetToolTip(btnMR, "Восстановить из памяти");
             tt.SetToolTip(btnMS, "Сохранить в память");
@@ -125,7 +168,7 @@ namespace Calculator
         private void SwitchMode(CalculatorMode mode)
         {
             controller.SetMode(mode);
-            btnImaginary.Enabled = (mode == CalculatorMode.Complex);
+            SwapDynamicButton(mode);
             UpdateUI();
             UpdateDigitButtons();
         }
@@ -180,7 +223,8 @@ namespace Calculator
                     case TCtrl.CMD_BACKSPACE:       // Backspace
                     case TCtrl.CMD_CLEAR:           // CE
                     case TCtrl.CMD_SIGN:            // +/-
-                    case TCtrl.CMD_IMAGINARY:       // i (для комплексных)
+                    case TCtrl.CMD_IMAGINARY:       // i
+                    case TCtrl.CMD_FRACTION:        // a/b (для дробей)
                         controller.ExecuteEditorCommand(cmd);
                         break;
 
@@ -259,9 +303,6 @@ namespace Calculator
             rbFraction.Checked = (currentMode == CalculatorMode.Fraction);
             rbComplex.Checked = (currentMode == CalculatorMode.Complex);
 
-            // Включаем/выключаем кнопку i
-            btnImaginary.Enabled = (currentMode == CalculatorMode.Complex);
-
             UpdateDigitButtons();
         }
 
@@ -306,6 +347,15 @@ namespace Calculator
                 ExecuteCommand(TCtrl.CMD_SEPARATOR);
                 e.Handled = true;
             }
+            // Для дробей: клавиша / добавляет разделитель дроби
+            else if (e.KeyChar == '/')
+            {
+                if (controller.GetMode() == CalculatorMode.Fraction)
+                    ExecuteCommand(TCtrl.CMD_FRACTION);
+                else
+                    ExecuteCommand(TCtrl.CMD_DIV);
+                e.Handled = true;
+            }
             // Операции
             else if (e.KeyChar == '+')
             {
@@ -320,11 +370,6 @@ namespace Calculator
             else if (e.KeyChar == '*')
             {
                 ExecuteCommand(TCtrl.CMD_MUL);
-                e.Handled = true;
-            }
-            else if (e.KeyChar == '/')
-            {
-                ExecuteCommand(TCtrl.CMD_DIV);
                 e.Handled = true;
             }
             // Равно и Enter

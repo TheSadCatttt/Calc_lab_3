@@ -74,9 +74,10 @@
         private System.Windows.Forms.Button btnSign;
         private System.Windows.Forms.Button btnBackspace;
         private System.Windows.Forms.Button btnClear;
-        private System.Windows.Forms.Button btnReset;      // C (полный сброс)
+        private System.Windows.Forms.Button btnReset;
         private System.Windows.Forms.Button btnEqual;
         private System.Windows.Forms.Button btnImaginary;  // i (мнимая единица)
+        private System.Windows.Forms.Button btnFraction;   // a/b (кнопка для ввода дроби)
 
         protected override void Dispose(bool disposing)
         {
@@ -154,6 +155,7 @@
             this.btnReset = new System.Windows.Forms.Button();
             this.btnEqual = new System.Windows.Forms.Button();
             this.btnImaginary = new System.Windows.Forms.Button();
+            this.btnFraction = new System.Windows.Forms.Button();
 
             ((System.ComponentModel.ISupportInitialize)(this.numBase)).BeginInit();
             this.mainMenu.SuspendLayout();
@@ -295,12 +297,12 @@
             this.rbComplex.UseVisualStyleBackColor = true;
 
             // ── buttonPanel ─────────────────────────────────────────────────────
+            this.buttonPanel.ColumnCount = 6;
+            this.buttonPanel.RowCount = 6;
             this.buttonPanel.Location = new System.Drawing.Point(12, 150);
             this.buttonPanel.Name = "buttonPanel";
             this.buttonPanel.Size = new System.Drawing.Size(430, 380);
             this.buttonPanel.TabIndex = 4;
-            this.buttonPanel.ColumnCount = 6;
-            this.buttonPanel.RowCount = 6;
 
             for (int i = 0; i < 6; i++)
                 this.buttonPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100f / 6));
@@ -367,6 +369,7 @@
             this.memButtons = allMem;
 
             // ── Специальные кнопки ──────────────────────────────────────────────
+
             // Запятая
             this.btnSeparator.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnSeparator.Font = fontLarge;
@@ -423,7 +426,7 @@
             this.btnEqual.ForeColor = System.Drawing.Color.White;
             this.btnEqual.UseVisualStyleBackColor = false;
 
-            // i (мнимая единица) — только для комплексных чисел
+            // i (мнимая единица)
             this.btnImaginary.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnImaginary.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.btnImaginary.Margin = new System.Windows.Forms.Padding(2);
@@ -432,7 +435,18 @@
             this.btnImaginary.Text = "i";
             this.btnImaginary.BackColor = System.Drawing.Color.FromArgb(255, 220, 150);
             this.btnImaginary.UseVisualStyleBackColor = false;
-            this.btnImaginary.Enabled = false; // По умолчанию выключена (только в режиме Complex)
+            this.btnImaginary.Enabled = false;
+
+            // a/b (кнопка для ввода дроби)
+            this.btnFraction.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnFraction.Font = fontNormal;
+            this.btnFraction.Margin = new System.Windows.Forms.Padding(2);
+            this.btnFraction.Name = "btnFraction";
+            this.btnFraction.Tag = TCtrl.CMD_FRACTION;
+            this.btnFraction.Text = "a/b";
+            this.btnFraction.BackColor = System.Drawing.Color.FromArgb(200, 220, 255);
+            this.btnFraction.UseVisualStyleBackColor = false;
+            this.btnFraction.Enabled = false;
 
             // ── Размещение кнопок в TableLayoutPanel ────────────────────────────
 
@@ -465,57 +479,21 @@
             this.buttonPanel.Controls.Add(this.btnSub, 3, 3);
             this.buttonPanel.Controls.Add(this.btnReset, 4, 3);
 
-            // Строка 4: 0, A, B, +, = (span 2)
-            this.buttonPanel.Controls.Add(this.btnDigit0, 0, 4);
-            this.buttonPanel.Controls.Add(this.btnDigitA, 1, 4);
-            this.buttonPanel.Controls.Add(this.btnDigitB, 2, 4);
-            this.buttonPanel.Controls.Add(this.btnAdd, 3, 4);
-            this.buttonPanel.Controls.Add(this.btnEqual, 4, 4);
-            this.buttonPanel.SetColumnSpan(this.btnEqual, 2);
-
-            // Строка 5: C, D, E, F, запятая, i, +/-
-            // (заметим, что колонок 6, поэтому размещаем 6 кнопок)
-            this.buttonPanel.Controls.Add(this.btnDigitC, 0, 5);
-            this.buttonPanel.Controls.Add(this.btnDigitD, 1, 5);
-            this.buttonPanel.Controls.Add(this.btnDigitE, 2, 5);
-            this.buttonPanel.Controls.Add(this.btnDigitF, 3, 5);
-            this.buttonPanel.Controls.Add(this.btnSeparator, 4, 5);
-            this.buttonPanel.Controls.Add(this.btnImaginary, 5, 5);
-
-            // Кнопка +/- не поместилась, разместим её на месте запятой (4,5),
-            // а запятую на 5,5, но тогда i некуда. 
-            // Переделаем: добавим +/- на место F, а F сдвинем.
-            // Перераспределим строку 5:
-            this.buttonPanel.Controls.Remove(this.btnDigitF);
-            this.buttonPanel.Controls.Remove(this.btnSeparator);
-            this.buttonPanel.Controls.Remove(this.btnImaginary);
-
-            // Новая строка 5: C, D, E, +/-, запятая, i
-            this.buttonPanel.Controls.Add(this.btnDigitC, 0, 5);
-            this.buttonPanel.Controls.Add(this.btnDigitD, 1, 5);
-            this.buttonPanel.Controls.Add(this.btnDigitE, 2, 5);
-            this.buttonPanel.Controls.Add(this.btnSign, 3, 5);      // +/-
-            this.buttonPanel.Controls.Add(this.btnSeparator, 4, 5);  // ,
-            this.buttonPanel.Controls.Add(this.btnImaginary, 5, 5);  // i
-
-            // Букву F разместим в строке 4 колонка 5 (там сейчас Equal, который span 2)
-            // Создадим новую строку 6 для F или разместим в строке 4 колонку 5 свободной?
-            // Проще: добавим кнопку F в строку 4 колонку 5, а Equal сделаем колонку 4 и 5?
-            // Переделаем строку 4:
-            this.buttonPanel.Controls.Remove(this.btnEqual);
-            this.buttonPanel.Controls.Remove(this.btnDigitA);
-            this.buttonPanel.Controls.Remove(this.btnDigitB);
-
             // Строка 4: 0, A, B, F, +, =
             this.buttonPanel.Controls.Add(this.btnDigit0, 0, 4);
             this.buttonPanel.Controls.Add(this.btnDigitA, 1, 4);
             this.buttonPanel.Controls.Add(this.btnDigitB, 2, 4);
-            this.buttonPanel.Controls.Add(this.btnDigitF, 3, 4);    // F
-            this.buttonPanel.Controls.Add(this.btnAdd, 4, 4);        // +
-            this.buttonPanel.Controls.Add(this.btnEqual, 5, 4);      // =
+            this.buttonPanel.Controls.Add(this.btnDigitF, 3, 4);
+            this.buttonPanel.Controls.Add(this.btnAdd, 4, 4);
+            this.buttonPanel.Controls.Add(this.btnEqual, 5, 4);
 
-            // Убираем span у Equal
-            this.buttonPanel.SetColumnSpan(this.btnEqual, 1);
+            // Строка 5: C, D, E, +/-, ,, a/b (или i)
+            this.buttonPanel.Controls.Add(this.btnDigitC, 0, 5);
+            this.buttonPanel.Controls.Add(this.btnDigitD, 1, 5);
+            this.buttonPanel.Controls.Add(this.btnDigitE, 2, 5);
+            this.buttonPanel.Controls.Add(this.btnSign, 3, 5);      // +/-
+            this.buttonPanel.Controls.Add(this.btnSeparator, 4, 5); // ,
+            // В последнюю ячейку будем динамически добавлять btnFraction или btnImaginary
 
             // ── MainForm ────────────────────────────────────────────────────────
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);

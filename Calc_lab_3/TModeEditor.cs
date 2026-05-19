@@ -203,8 +203,8 @@ namespace Calculator
 
         private string EditFraction(int command)
         {
-            // Для дроби: обрабатываем / как разделитель
-            if (command == TCtrl.CMD_SEPARATOR)
+            // Специальная обработка для кнопки дроби
+            if (command == TCtrl.CMD_FRACTION)
             {
                 if (!fractionStr.Contains("/"))
                     fractionStr += "/";
