@@ -1,4 +1,5 @@
-﻿﻿using System;
+﻿using System;
+using System.Text;
 
 namespace Calculator
 {
@@ -47,10 +48,27 @@ namespace Calculator
         private TCtrlState state;
         private int currentBase;
         private int currentPrecision;
-        
+
         // Для хранения последней выполненной функции (для повторения через Enter)
         private TFunc lastFunction;
         private bool lastWasFunction;
+
+        // ── История вычислений ───────────────────────────────────────────────
+        // Хранит строки вида "3 + sqr(2) = 7"
+        private readonly StringBuilder historyBuilder = new StringBuilder();
+
+        // Промежуточное выражение, которое отображается ДО нажатия =
+        // Например: "3 +" или "3 + sqr(2)"
+        private string expressionInProgress = "";
+
+        // Левый операнд в виде строки для истории
+        private string historyLeft = "";
+
+        // Символ операции для истории
+        private string historyOp = "";
+
+        public string ExpressionInProgress => expressionInProgress;
+        public string History => historyBuilder.ToString();
 
         public TCtrl(int numberBase = 10, int precision = 10)
         {
@@ -95,6 +113,9 @@ namespace Calculator
                 editor.Clear();
                 state = TCtrlState.Editing;
                 lastWasFunction = false;
+                expressionInProgress = "";
+                historyLeft = "";
+                historyOp = "";
             }
             else if (state == TCtrlState.OpSet && (cmd >= 0 && cmd <= 16))
             {
@@ -110,18 +131,18 @@ namespace Calculator
             return result;
         }
 
-        // Метод ExecuteOperation нужно заменить на этот:
         public string ExecuteOperation(int cmd)
         {
             TPNumber current = ReadCurrentNumber();
             TOprtn op;
+            string opSymbol;
 
             switch (cmd)
             {
-                case CMD_ADD: op = TOprtn.Add; break;
-                case CMD_SUB: op = TOprtn.Sub; break;
-                case CMD_MUL: op = TOprtn.Mul; break;
-                case CMD_DIV: op = TOprtn.Dvd; break;
+                case CMD_ADD: op = TOprtn.Add; opSymbol = "+"; break;
+                case CMD_SUB: op = TOprtn.Sub; opSymbol = "-"; break;
+                case CMD_MUL: op = TOprtn.Mul; opSymbol = "×"; break;
+                case CMD_DIV: op = TOprtn.Dvd; opSymbol = "÷"; break;
                 default: return Display;
             }
 
@@ -130,18 +151,20 @@ namespace Calculator
             // Если в состоянии Editing и есть ожидающая операция - сначала вычисляем
             if (state == TCtrlState.Editing && processor.GetOperation() != TOprtn.None)
             {
-                // Вычисляем текущую операцию с текущим числом как правым операндом
                 processor.SetRightOperand(current);
                 TPNumber result = processor.RunOperation();
 
-                // Сохраняем результат как левый операнд
                 processor.SetLeftOperand(result);
-                processor.SetOperation(op); // Устанавливаем новую операцию
-                processor.ClearRightOperand(); // Очищаем правый операнд
+                processor.SetOperation(op);
+                processor.ClearRightOperand();
 
-                // Показываем результат на дисплее
                 WriteToEditor(result);
                 state = TCtrlState.OpSet;
+
+                // Обновляем историю выражения
+                historyLeft = result.ToString();
+                historyOp = opSymbol;
+                expressionInProgress = $"{historyLeft} {historyOp}";
                 return Display;
             }
 
@@ -151,21 +174,30 @@ namespace Calculator
                 processor.SetLeftOperand(current);
                 processor.SetOperation(op);
                 state = TCtrlState.OpSet;
+
+                historyLeft = current.ToString();
+                historyOp = opSymbol;
+                expressionInProgress = $"{historyLeft} {historyOp}";
                 editor.Clear();
                 return Display;
             }
 
             if (state == TCtrlState.OpSet)
             {
-                processor.SetRightOperand(current);
-                processor.RunOperation();
+                // Смена операции без ввода правого — просто обновляем операцию
                 processor.SetOperation(op);
-                processor.SetLeftOperand(processor.GetLeftOperand());
+                historyOp = opSymbol;
+                expressionInProgress = $"{historyLeft} {historyOp}";
             }
             else
             {
+                // Start или Editing без ожидающей операции
                 processor.SetLeftOperand(current);
                 processor.SetOperation(op);
+
+                historyLeft = current.ToString();
+                historyOp = opSymbol;
+                expressionInProgress = $"{historyLeft} {historyOp}";
             }
 
             state = TCtrlState.OpSet;
@@ -173,10 +205,9 @@ namespace Calculator
 
             return processor.GetLeftOperand().ToString();
         }
+
         public string ExecuteEqual()
         {
-            Console.WriteLine($"ExecuteEqual: state={state}");
-
             // Если была выполнена функция и теперь нажали Enter - повторяем функцию
             if (state == TCtrlState.Result && lastWasFunction)
             {
@@ -185,6 +216,9 @@ namespace Calculator
                     TPNumber current = ReadCurrentNumber();
                     processor.SetLeftOperand(current);
                     TPNumber result = processor.RunFunction(lastFunction);
+                    string funcName = lastFunction == TFunc.Sqr ? "sqr" : "1/";
+                    AppendHistory($"{funcName}({current}) = {result}");
+                    expressionInProgress = "";
                     WriteToEditor(result);
                     processor.SetLeftOperand(result);
                     return Display;
@@ -200,7 +234,13 @@ namespace Calculator
             {
                 try
                 {
+                    string leftBefore = processor.GetLeftOperand().ToString();
+                    string rightRepeat = processor.GetLastRightOperand()?.ToString() ?? "";
+                    string opRepeat = OpSymbol(processor.GetLastOperation());
+
                     TPNumber result = processor.RepeatLastOperation();
+                    AppendHistory($"{leftBefore} {opRepeat} {rightRepeat} = {result}");
+                    expressionInProgress = "";
                     WriteToEditor(result);
                     processor.SetLeftOperand(result);
                     lastWasFunction = false;
@@ -213,15 +253,19 @@ namespace Calculator
             }
 
             // Обычное выполнение операции
-            if (state != TCtrlState.Result)
-            {
-                TPNumber current = ReadCurrentNumber();
-                Console.WriteLine($"ExecuteEqual: current={current.GetNumber()}");
-                processor.SetRightOperand(current);
-            }
+            TPNumber currentVal = ReadCurrentNumber();
+            processor.SetRightOperand(currentVal);
+
+            // Формируем строку для истории
+            string rightStr = currentVal.ToString();
+            string fullExpr = $"{historyLeft} {historyOp} {rightStr}";
 
             TPNumber operationResult = processor.RunOperation();
-            Console.WriteLine($"ExecuteEqual result={operationResult.GetNumber()}");
+
+            AppendHistory($"{fullExpr} = {operationResult}");
+            expressionInProgress = "";
+            historyLeft = "";
+            historyOp = "";
 
             WriteToEditor(operationResult);
             processor.SetLeftOperand(operationResult);
@@ -236,26 +280,33 @@ namespace Calculator
         {
             TPNumber current = ReadCurrentNumber();
             TFunc func = cmd == CMD_SQR ? TFunc.Sqr : TFunc.Rev;
-            
+            string funcName = func == TFunc.Sqr ? "sqr" : "1/";
+
             TPNumber result;
-            
-            // Если есть ожидающая операция (состояние OpSet)
-            if (state == TCtrlState.OpSet)
+
+            // ── ИСПРАВЛЕНИЕ БАГ #3 ──────────────────────────────────────────
+            // Если есть ожидающая операция (состояние OpSet ИЛИ Editing с операцией)
+            // функция применяется к ПРАВОМУ операнду, левый и операция не трогаются.
+            if (state == TCtrlState.OpSet ||
+                (state == TCtrlState.Editing && processor.GetOperation() != TOprtn.None))
             {
                 // Применяем функцию к текущему числу (правому операнду)
-                processor.SetRightOperand(current);
-                result = processor.RunFunctionOnOperand(func, processor.GetRightOperand());
+                result = processor.RunFunctionOnOperand(func, current);
                 // Сохраняем результат как правый операнд
                 processor.SetRightOperand(result);
-                // Показываем результат на дисплее, но не выполняем операцию
+                // Показываем результат на дисплее, не трогая левый операнд и операцию
                 WriteToEditor(result);
-                state = TCtrlState.OpSet; // Остаёмся в состоянии ожидания операции
+                // Обновляем выражение в строке истории
+                expressionInProgress = $"{historyLeft} {historyOp} {funcName}({current})";
+                state = TCtrlState.OpSet;
             }
             else if (state == TCtrlState.Result)
             {
                 // Применяем функцию к текущему результату
                 processor.SetLeftOperand(current);
                 result = processor.RunFunction(func);
+                AppendHistory($"{funcName}({current}) = {result}");
+                expressionInProgress = "";
                 WriteToEditor(result);
                 processor.SetLeftOperand(result);
                 processor.ClearOperation();
@@ -263,18 +314,20 @@ namespace Calculator
             }
             else
             {
-                // Start или Editing - просто применяем функцию к текущему числу
+                // Start или Editing без ожидающей операции
                 processor.SetLeftOperand(current);
                 result = processor.RunFunction(func);
+                AppendHistory($"{funcName}({current}) = {result}");
+                expressionInProgress = "";
                 WriteToEditor(result);
                 processor.SetLeftOperand(result);
                 processor.ClearOperation();
                 state = TCtrlState.Result;
             }
-            
+
             lastWasFunction = true;
             lastFunction = func;
-            
+
             return Display;
         }
 
@@ -288,19 +341,35 @@ namespace Calculator
                 case CMD_MS:
                     memory.Store(current);
                     break;
+
                 case CMD_MR:
                     TPNumber memValue = memory.Take() as TPNumber;
-                    if (memValue != null)
+                    TPNumber converted = memValue != null
+                        ? new TPNumber(memValue.GetNumber(), currentBase, currentPrecision)
+                        : zero;
+
+                    WriteToEditor(converted);
+
+                    // ── ИСПРАВЛЕНИЕ БАГ #1 ──────────────────────────────────────────
+                    // Если есть ожидающая операция, число из памяти становится
+                    // правым операндом — остаёмся в OpSet, чтобы = выполнило операцию.
+                    // Если операции нет — это просто загрузка значения (Result).
+                    if (processor.GetOperation() != TOprtn.None)
                     {
-                        TPNumber converted = new TPNumber(memValue.GetNumber(), currentBase, currentPrecision);
-                        WriteToEditor(converted);
+                        processor.SetRightOperand(converted);
+                        expressionInProgress = $"{historyLeft} {historyOp} {converted}";
+                        state = TCtrlState.OpSet;
                     }
                     else
                     {
-                        WriteToEditor(zero);
+                        processor.SetLeftOperand(converted);
+                        processor.ClearOperation();
+                        expressionInProgress = "";
+                        state = TCtrlState.Result;
                     }
-                    state = TCtrlState.Result;
+                    lastWasFunction = false;
                     break;
+
                 case CMD_MP:
                     TPNumber memVal = memory.Take() as TPNumber;
                     if (memVal != null)
@@ -314,6 +383,7 @@ namespace Calculator
                         memory.Add(current);
                     }
                     break;
+
                 case CMD_MC:
                     memory.Clear(zero);
                     break;
@@ -328,7 +398,15 @@ namespace Calculator
             processor.Reset(zero, zero);
             state = TCtrlState.Start;
             lastWasFunction = false;
+            expressionInProgress = "";
+            historyLeft = "";
+            historyOp = "";
             return Display;
+        }
+
+        public void ClearHistory()
+        {
+            historyBuilder.Clear();
         }
 
         public string CopyToClipboard() => Display;
@@ -345,6 +423,7 @@ namespace Calculator
                 processor.SetLeftOperand(parsed);
                 processor.ClearOperation();
                 lastWasFunction = false;
+                expressionInProgress = "";
             }
             catch
             {
@@ -352,6 +431,8 @@ namespace Calculator
             }
             return Display;
         }
+
+        // ── Вспомогательные методы ───────────────────────────────────────────
 
         private TPNumber ReadCurrentNumber()
         {
@@ -369,5 +450,21 @@ namespace Calculator
         {
             editor.SetString(value.ToString());
         }
+
+        private void AppendHistory(string line)
+        {
+            if (historyBuilder.Length > 0)
+                historyBuilder.AppendLine();
+            historyBuilder.Append(line);
+        }
+
+        private static string OpSymbol(TOprtn op) => op switch
+        {
+            TOprtn.Add => "+",
+            TOprtn.Sub => "-",
+            TOprtn.Mul => "×",
+            TOprtn.Dvd => "÷",
+            _ => ""
+        };
     }
 }
