@@ -3,10 +3,8 @@ using System.Numerics; // Для BigInteger (избегаем переполне
 
 namespace Calculator
 {
-    /// <summary>
     /// Класс обыкновенных дробей с поддержкой p-ичной системы счисления
-    /// Соответствует TFrac из методички
-    /// </summary>
+
     public class TFrac : TANumber
     {
         private BigInteger numerator;   // Числитель
@@ -85,7 +83,7 @@ namespace Calculator
             Reduce();
         }
 
-        private BigInteger ParsePNumber(string s)
+        private BigInteger ParsePNumber(string s) // Парсинг строки в p-ичное число
         {
             if (string.IsNullOrEmpty(s)) return 0;
 
@@ -100,7 +98,7 @@ namespace Calculator
             return result;
         }
 
-        private string BigIntegerToPString(BigInteger value)
+        private string BigIntegerToPString(BigInteger value) // Преобразование BigInteger в строку в p-ичной системе
         {
             if (value == 0) return "0";
 
@@ -118,7 +116,7 @@ namespace Calculator
             return negative ? "-" + result : result;
         }
 
-        private void Reduce()
+        private void Reduce() // Сокращение дроби
         {
             if (numerator == 0)
             {
@@ -131,7 +129,7 @@ namespace Calculator
             denominator /= gcd;
         }
 
-        private static BigInteger GCD(BigInteger a, BigInteger b)
+        private static BigInteger GCD(BigInteger a, BigInteger b) // Алгоритм Евклида для нахождения наибольшего общего делителя
         {
             while (b != 0)
             {
@@ -142,7 +140,7 @@ namespace Calculator
             return a;
         }
 
-        public override TANumber Add(TANumber other)
+        public override TANumber Add(TANumber other) // Сложение дробей
         {
             TFrac f = other as TFrac ?? throw new InvalidOperationException("Несовместимые типы");
             BigInteger newNum = numerator * f.denominator + f.numerator * denominator;
@@ -150,7 +148,7 @@ namespace Calculator
             return new TFrac(newNum, newDen, numberBase, precision);
         }
 
-        public override TANumber Subtract(TANumber other)
+        public override TANumber Subtract(TANumber other) // Вычитание дробей
         {
             TFrac f = other as TFrac ?? throw new InvalidOperationException("Несовместимые типы");
             BigInteger newNum = numerator * f.denominator - f.numerator * denominator;
@@ -158,13 +156,13 @@ namespace Calculator
             return new TFrac(newNum, newDen, numberBase, precision);
         }
 
-        public override TANumber Multiply(TANumber other)
+        public override TANumber Multiply(TANumber other) // Умножение дробей
         {
             TFrac f = other as TFrac ?? throw new InvalidOperationException("Несовместимые типы");
             return new TFrac(numerator * f.numerator, denominator * f.denominator, numberBase, precision);
         }
 
-        public override TANumber Divide(TANumber other)
+        public override TANumber Divide(TANumber other) // Деление дробей
         {
             TFrac f = other as TFrac ?? throw new InvalidOperationException("Несовместимые типы");
             if (f.numerator == 0)

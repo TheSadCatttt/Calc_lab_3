@@ -3,12 +3,10 @@ using System.Text;
 
 namespace Calculator
 {
-    public enum TCtrlState { Start, Editing, OpSet, Result }
-    public enum CalculatorMode { Real, Fraction, Complex }
+    public enum TCtrlState { Start, Editing, OpSet, Result } // Состояния контроллера
+    public enum CalculatorMode { Real, Fraction, Complex } // Режимы калькулятора
 
-    /// <summary>
-    /// Управление универсальным калькулятором
-    /// </summary>
+    // Управление универсальным калькулятором
     public class TCtrl
     {
         // Константы команд
@@ -90,7 +88,7 @@ namespace Calculator
             lastWasFunction = false;
         }
 
-        private void InitializeProcessorAndMemory()
+        private void InitializeProcessorAndMemory() // Инициализация processor и memory в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -112,7 +110,7 @@ namespace Calculator
             }
         }
 
-        private TModeEditor.NumberMode ModeToEditorMode(CalculatorMode mode) => mode switch
+        private TModeEditor.NumberMode ModeToEditorMode(CalculatorMode mode) => mode switch // Преобразование режима калькулятора в режим редактора
         {
             CalculatorMode.Real => TModeEditor.NumberMode.Real,
             CalculatorMode.Fraction => TModeEditor.NumberMode.Fraction,
@@ -120,7 +118,7 @@ namespace Calculator
             _ => TModeEditor.NumberMode.Real
         };
 
-        private TANumber CreateNumber(string value)
+        private TANumber CreateNumber(string value) // Создание объекта TANumber в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -131,7 +129,7 @@ namespace Calculator
             };
         }
 
-        private TANumber ReadCurrentNumber()
+        private TANumber ReadCurrentNumber() // Чтение текущего числа из редактора и создание соответствующего объекта TANumber
         {
             try
             {
@@ -143,7 +141,7 @@ namespace Calculator
             }
         }
 
-        private void WriteToEditor(TANumber value)
+        private void WriteToEditor(TANumber value) // Запись числа в редактор в виде строки
         {
             editor.SetString(value.ToString());
         }
@@ -165,7 +163,7 @@ namespace Calculator
             }
         }
 
-        private void SetRightOperand(TANumber value)
+        private void SetRightOperand(TANumber value) // Установка правого операнда в processor в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -181,7 +179,7 @@ namespace Calculator
             }
         }
 
-        private TANumber GetLeftOperand()
+        private TANumber GetLeftOperand() // Получение левого операнда из processor в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -192,7 +190,7 @@ namespace Calculator
             };
         }
 
-        private TANumber RunOperation()
+        private TANumber RunOperation() // Выполнение операции в processor в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -203,7 +201,7 @@ namespace Calculator
             };
         }
 
-        private TANumber RunFunction(TFunc func)
+        private TANumber RunFunction(TFunc func) // Выполнение функции в processor в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -214,7 +212,7 @@ namespace Calculator
             };
         }
 
-        private TANumber RunFunctionOnOperand(TFunc func, TANumber operand)
+        private TANumber RunFunctionOnOperand(TFunc func, TANumber operand) // Выполнение функции на операнде в processor в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -225,7 +223,7 @@ namespace Calculator
             };
         }
 
-        private void ResetProcessor(TANumber left, TANumber right)
+        private void ResetProcessor(TANumber left, TANumber right) // Сброс процессора с новыми левым и правым операндами в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -241,7 +239,7 @@ namespace Calculator
             }
         }
 
-        private TMemoryState GetMemoryState()
+        private TMemoryState GetMemoryState() // Получение состояния памяти в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -252,7 +250,7 @@ namespace Calculator
             };
         }
 
-        private void MemoryStore(TANumber value)
+        private void MemoryStore(TANumber value) // Сохранение значения в память в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -268,7 +266,7 @@ namespace Calculator
             }
         }
 
-        private TANumber MemoryTake()
+        private TANumber MemoryTake() // Получение значения из памяти в зависимости от текущего режима
         {
             return currentMode switch
             {
@@ -279,7 +277,7 @@ namespace Calculator
             };
         }
 
-        private void MemoryAdd(TANumber value)
+        private void MemoryAdd(TANumber value) // Добавление значения к памяти в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -295,7 +293,7 @@ namespace Calculator
             }
         }
 
-        private void MemoryClear(TANumber zero)
+        private void MemoryClear(TANumber zero) // Очистка памяти, устанавливая её в ноль в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -311,7 +309,7 @@ namespace Calculator
             }
         }
 
-        private void ClearOperation()
+        private void ClearOperation() // Очистка текущей операции в processor в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -327,7 +325,7 @@ namespace Calculator
             }
         }
 
-        private void SetOperation(TOprtn op)
+        private void SetOperation(TOprtn op) // Установка текущей операции в processor в зависимости от текущего режима
         {
             switch (currentMode)
             {
@@ -343,7 +341,7 @@ namespace Calculator
             }
         }
 
-        private TOprtn GetOperation()
+        private TOprtn GetOperation() // Получение текущей операции из processor в зависимости от текущего режима
         {
             return currentMode switch
             {

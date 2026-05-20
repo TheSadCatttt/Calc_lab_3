@@ -1,14 +1,15 @@
 ﻿using System;
+//класс для редактирования чисел в разных режимах (действительные, дробные, комплексные)
 
 namespace Calculator
 {
     public class TModeEditor
     {
-        public enum NumberMode { Real, Fraction, Complex }
+        public enum NumberMode { Real, Fraction, Complex } // Режимы редактирования
 
-        private NumberMode currentMode;
-        private int numberBase;
-        private int precision;
+        private NumberMode currentMode; // Текущий режим редактирования
+        private int numberBase; // Основание системы счисления для отображения и редактирования
+        private int precision; //   Точность для отображения (не используется напрямую, но может быть полезна для будущих расширений)
 
         // Для действительных чисел
         private string realStr;
@@ -22,7 +23,7 @@ namespace Calculator
         private bool editingReal;        // true - редактируем действительную часть, false - мнимую
         public bool IsEditingReal => (currentMode == NumberMode.Complex) && editingReal;
 
-        public TModeEditor(int baseNum = 10, int prec = 6, NumberMode mode = NumberMode.Real)
+        public TModeEditor(int baseNum = 10, int prec = 6, NumberMode mode = NumberMode.Real) // Конструктор, который инициализирует редактор с заданным основанием системы счисления, точностью и режимом редактирования
         {
             numberBase = baseNum;
             precision = prec;
@@ -30,7 +31,7 @@ namespace Calculator
             Reset();
         }
 
-        public void SetMode(NumberMode mode)
+        public void SetMode(NumberMode mode) // Метод для смены режима редактирования, который сохраняет текущее значение перед переключением и загружает соответствующее значение для нового режима
         {
             if (currentMode == mode) return;
 
@@ -39,16 +40,16 @@ namespace Calculator
             LoadValueForCurrentMode();
         }
 
-        public NumberMode GetMode() => currentMode;
+        public NumberMode GetMode() => currentMode; // Метод для получения текущего режима редактирования
 
-        public void SetBase(int newBase)
+        public void SetBase(int newBase) // Метод для установки нового основания системы счисления
         {
             if (newBase == numberBase) return;
             numberBase = newBase;
             Reset();
         }
 
-        public void SetPrecision(int newPrec)
+        public void SetPrecision(int newPrec) // Метод для установки новой точности (хотя она не используется напрямую, может быть полезна для будущих расширений)
         {
             precision = newPrec;
         }
@@ -62,9 +63,9 @@ namespace Calculator
             editingReal = true;
         }
 
-        private void SaveCurrentValue()
+        private void SaveCurrentValue() // Метод для сохранения текущего значения в соответствующем поле перед переключением режимов
         {
-            string current = GetString();
+            string current = GetString(); // Получаем текущее отображаемое значение, которое нужно сохранить
             switch (currentMode)
             {
                 case NumberMode.Real:
@@ -97,7 +98,7 @@ namespace Calculator
             }
         }
 
-        private bool IsValidRealString(string s)
+        private bool IsValidRealString(string s) // Метод для проверки, что строка является допустимым представлением действительного числа в текущей системе счисления
         {
             if (string.IsNullOrEmpty(s)) return false;
             foreach (char ch in s)
